@@ -105,7 +105,7 @@ export function ChatInput() {
   const canSubmit = (input.trim().length > 0 || attachments.length > 0) && !isStreaming;
 
   return (
-    <div className="border-t border-[var(--color-border)] bg-surface/80 backdrop-blur-sm p-4">
+    <div className="border-t border-[var(--color-border)] bg-surface p-4">
       {/* 첨부 파일 미리보기 */}
       {attachments.length > 0 && (
         <AttachmentPreview attachments={attachments} onRemove={removeAttachment} />

@@ -4,6 +4,7 @@ import { ModelSelector } from "./ModelSelector";
 import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
 import { useChatStore } from "../stores/chatStore";
+import { ThemeToggle } from "@/design-system";
 import { useEffect } from "react";
 
 export function ChatWindow() {
@@ -22,7 +23,10 @@ export function ChatWindow() {
           <h1 className="text-sm font-semibold text-text-primary">AI Chat</h1>
           <p className="text-xs text-text-muted">스트리밍 응답 · 멀티모달 입력</p>
         </div>
-        <ModelSelector />
+        <div className="flex items-center gap-2">
+          <ModelSelector />
+          <ThemeToggle />
+        </div>
       </header>
 
       {/* 메시지 리스트 */}

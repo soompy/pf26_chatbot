@@ -2,89 +2,495 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   DESIGN TOKENS — AI Chatbot UI Design System
+   구조: Primitive → Semantic → Component
+   ============================================================ */
+
 @layer base {
+
+  /* ----------------------------------------------------------
+     PRIMITIVE TOKENS (원시값, 직접 사용 금지)
+     ---------------------------------------------------------- */
   :root {
-    /* Surface */
-    --color-surface: #0f0f13;
-    --color-surface-raised: #1a1a24;
-    --color-surface-overlay: #22222f;
+    /* Palette — Violet (브랜드) */
+    --primitive-violet-50:  #f0eeff;
+    --primitive-violet-100: #e0ddff;
+    --primitive-violet-200: #c4beff;
+    --primitive-violet-300: #a89eff;
+    --primitive-violet-400: #8c7fff;
+    --primitive-violet-500: #6c63ff;  /* primary brand */
+    --primitive-violet-600: #574fd9;
+    --primitive-violet-700: #433db3;
+    --primitive-violet-800: #302c8c;
+    --primitive-violet-900: #1e1a66;
 
-    /* Text */
-    --color-text-primary: #f0f0f5;
-    --color-text-secondary: #a0a0b8;
-    --color-text-muted: #5a5a72;
+    /* Palette — Neutral */
+    --primitive-neutral-0:   #ffffff;
+    --primitive-neutral-50:  #f5f5f8;
+    --primitive-neutral-100: #eaeaf0;
+    --primitive-neutral-200: #d0d0de;
+    --primitive-neutral-300: #a8a8c0;
+    --primitive-neutral-400: #7878a0;
+    --primitive-neutral-500: #555570;
+    --primitive-neutral-600: #3a3a52;
+    --primitive-neutral-700: #272738;
+    --primitive-neutral-800: #1a1a28;
+    --primitive-neutral-850: #141420;
+    --primitive-neutral-900: #0f0f18;
+    --primitive-neutral-950: #08080f;
 
-    /* Border */
-    --color-border: #2a2a3a;
+    /* Palette — Status */
+    --primitive-red-400:    #ff6b6b;
+    --primitive-red-500:    #ff4444;
+    --primitive-red-900:    #2d0a0a;
+    --primitive-amber-400:  #fbbf24;
+    --primitive-amber-900:  #2d1f00;
+    --primitive-green-400:  #4ade80;
+    --primitive-green-500:  #22c55e;
+    --primitive-green-900:  #052e16;
+    --primitive-blue-400:   #60a5fa;
+    --primitive-blue-900:   #0c1a2e;
 
-    /* Chat bubbles */
-    --color-ai-bubble: #1a1a24;
-    --color-user-bubble: #1e1e4a;
+    /* Duration */
+    --primitive-duration-instant:  50ms;
+    --primitive-duration-fast:     150ms;
+    --primitive-duration-normal:   250ms;
+    --primitive-duration-slow:     400ms;
+    --primitive-duration-slower:   600ms;
+    --primitive-duration-stream:   30ms;   /* 스트리밍 청크 간격 */
 
-    /* Accent */
-    --color-accent: #6c63ff;
-    --color-accent-hover: #8079ff;
+    /* Easing */
+    --primitive-ease-default:  cubic-bezier(0.4, 0, 0.2, 1);
+    --primitive-ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+    --primitive-ease-out:      cubic-bezier(0, 0, 0.2, 1);
+    --primitive-ease-in:       cubic-bezier(0.4, 0, 1, 1);
 
-    /* Status */
-    --color-error: #ff5c5c;
-    --color-success: #4ade80;
+    /* Radius */
+    --primitive-radius-xs:   4px;
+    --primitive-radius-sm:   6px;
+    --primitive-radius-md:   10px;
+    --primitive-radius-lg:   16px;
+    --primitive-radius-xl:   24px;
+    --primitive-radius-full: 9999px;
+
+    /* Shadow */
+    --primitive-shadow-sm:  0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    --primitive-shadow-md:  0 4px 16px rgba(0,0,0,0.24);
+    --primitive-shadow-lg:  0 8px 32px rgba(0,0,0,0.32);
+    --primitive-shadow-glow-violet: 0 0 20px rgba(108,99,255,0.35);
   }
 
-  * {
+  /* ----------------------------------------------------------
+     SEMANTIC TOKENS — DARK MODE (default)
+     ---------------------------------------------------------- */
+  :root,
+  [data-theme="dark"] {
+    /* Surface 레이어 구조 (elevation 0 → 3) */
+    --color-bg:              var(--primitive-neutral-950);  /* 페이지 배경 */
+    --color-surface:         var(--primitive-neutral-900);  /* 기본 카드 */
+    --color-surface-raised:  var(--primitive-neutral-850);  /* 사이드바, 헤더 */
+    --color-surface-overlay: var(--primitive-neutral-800);  /* 드롭다운, 모달 */
+    --color-surface-sunken:  var(--primitive-neutral-950);  /* 입력 배경 내부 */
+
+    /* Text */
+    --color-text-primary:   var(--primitive-neutral-50);
+    --color-text-secondary: var(--primitive-neutral-300);
+    --color-text-muted:     var(--primitive-neutral-500);
+    --color-text-disabled:  var(--primitive-neutral-600);
+    --color-text-inverse:   var(--primitive-neutral-950);
+
+    /* Border */
+    --color-border:         var(--primitive-neutral-700);
+    --color-border-strong:  var(--primitive-neutral-600);
+    --color-border-subtle:  var(--primitive-neutral-800);
+
+    /* Brand / Accent */
+    --color-accent:         var(--primitive-violet-500);
+    --color-accent-hover:   var(--primitive-violet-400);
+    --color-accent-subtle:  rgba(108, 99, 255, 0.12);
+    --color-accent-border:  rgba(108, 99, 255, 0.30);
+
+    /* ── AI 응답 특화 토큰 ── */
+
+    /* 채팅 버블 */
+    --color-bubble-ai:          var(--primitive-neutral-850);
+    --color-bubble-ai-border:   var(--primitive-neutral-700);
+    --color-bubble-user:        #1e1c4a;
+    --color-bubble-user-border: rgba(108, 99, 255, 0.25);
+
+    /* 스트리밍 상태 */
+    --color-streaming-cursor:   var(--primitive-violet-400);
+    --color-streaming-text:     var(--primitive-neutral-50);
+    --color-streaming-glow:     rgba(108, 99, 255, 0.20);
+    --color-streaming-border:   rgba(108, 99, 255, 0.40);
+
+    /* 로딩 shimmer */
+    --color-shimmer-base:       var(--primitive-neutral-800);
+    --color-shimmer-highlight:  var(--primitive-neutral-700);
+
+    /* 상태별 토큰 */
+    --color-error:         var(--primitive-red-400);
+    --color-error-bg:      rgba(255, 107, 107, 0.08);
+    --color-error-border:  rgba(255, 107, 107, 0.25);
+
+    --color-warning:        var(--primitive-amber-400);
+    --color-warning-bg:     rgba(251, 191, 36, 0.08);
+    --color-warning-border: rgba(251, 191, 36, 0.25);
+
+    --color-success:        var(--primitive-green-400);
+    --color-success-bg:     rgba(74, 222, 128, 0.08);
+    --color-success-border: rgba(74, 222, 128, 0.25);
+
+    --color-info:           var(--primitive-blue-400);
+    --color-info-bg:        rgba(96, 165, 250, 0.08);
+    --color-info-border:    rgba(96, 165, 250, 0.25);
+
+    /* ── 타이포 ── */
+    --font-sans: "Geist", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: "Fira Code", "Cascadia Code", "JetBrains Mono", "Consolas", monospace;
+
+    --font-size-xs:   0.6875rem;  /* 11px */
+    --font-size-sm:   0.8125rem;  /* 13px */
+    --font-size-base: 0.9375rem;  /* 15px */
+    --font-size-md:   1rem;       /* 16px */
+    --font-size-lg:   1.125rem;   /* 18px */
+    --font-size-xl:   1.25rem;    /* 20px */
+    --font-size-2xl:  1.5rem;     /* 24px */
+
+    --font-weight-normal:   400;
+    --font-weight-medium:   500;
+    --font-weight-semibold: 600;
+    --font-weight-bold:     700;
+
+    --line-height-tight:   1.25;
+    --line-height-snug:    1.375;
+    --line-height-normal:  1.5;
+    --line-height-relaxed: 1.625;
+    --line-height-loose:   2;
+
+    /* ── 간격 ── */
+    --space-1:  4px;
+    --space-2:  8px;
+    --space-3:  12px;
+    --space-4:  16px;
+    --space-5:  20px;
+    --space-6:  24px;
+    --space-8:  32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+
+    /* 채팅 레이아웃 전용 */
+    --chat-sidebar-width:     260px;
+    --chat-max-width:         768px;
+    --chat-input-min-height:  44px;
+    --chat-input-max-height:  200px;
+    --chat-bubble-padding-x:  var(--space-4);
+    --chat-bubble-padding-y:  var(--space-3);
+
+    /* ── 애니메이션 duration ── */
+    --duration-instant: var(--primitive-duration-instant);
+    --duration-fast:    var(--primitive-duration-fast);
+    --duration-normal:  var(--primitive-duration-normal);
+    --duration-slow:    var(--primitive-duration-slow);
+    --duration-slower:  var(--primitive-duration-slower);
+    --duration-stream:  var(--primitive-duration-stream);
+
+    --ease-default: var(--primitive-ease-default);
+    --ease-spring:  var(--primitive-ease-spring);
+    --ease-out:     var(--primitive-ease-out);
+
+    /* ── 반경 ── */
+    --radius-sm:        var(--primitive-radius-sm);
+    --radius-md:        var(--primitive-radius-md);
+    --radius-lg:        var(--primitive-radius-lg);
+    --radius-xl:        var(--primitive-radius-xl);
+    --radius-full:      var(--primitive-radius-full);
+    --radius-bubble:    var(--primitive-radius-lg);
+    --radius-bubble-sm: var(--primitive-radius-sm);
+
+    /* ── 그림자 ── */
+    --shadow-sm:         var(--primitive-shadow-sm);
+    --shadow-md:         var(--primitive-shadow-md);
+    --shadow-lg:         var(--primitive-shadow-lg);
+    --shadow-glow:       var(--primitive-shadow-glow-violet);
+  }
+
+  /* ----------------------------------------------------------
+     SEMANTIC TOKENS — LIGHT MODE
+     ---------------------------------------------------------- */
+  [data-theme="light"] {
+    --color-bg:              var(--primitive-neutral-50);
+    --color-surface:         var(--primitive-neutral-0);
+    --color-surface-raised:  var(--primitive-neutral-50);
+    --color-surface-overlay: var(--primitive-neutral-100);
+    --color-surface-sunken:  var(--primitive-neutral-100);
+
+    --color-text-primary:   var(--primitive-neutral-900);
+    --color-text-secondary: var(--primitive-neutral-600);
+    --color-text-muted:     var(--primitive-neutral-400);
+    --color-text-disabled:  var(--primitive-neutral-300);
+    --color-text-inverse:   var(--primitive-neutral-0);
+
+    --color-border:        var(--primitive-neutral-200);
+    --color-border-strong: var(--primitive-neutral-300);
+    --color-border-subtle: var(--primitive-neutral-100);
+
+    --color-accent:        var(--primitive-violet-500);
+    --color-accent-hover:  var(--primitive-violet-600);
+    --color-accent-subtle: rgba(108, 99, 255, 0.08);
+    --color-accent-border: rgba(108, 99, 255, 0.25);
+
+    /* AI 특화 — light */
+    --color-bubble-ai:          var(--primitive-neutral-50);
+    --color-bubble-ai-border:   var(--primitive-neutral-200);
+    --color-bubble-user:        var(--primitive-violet-50);
+    --color-bubble-user-border: var(--primitive-violet-100);
+
+    --color-streaming-cursor:   var(--primitive-violet-500);
+    --color-streaming-text:     var(--primitive-neutral-900);
+    --color-streaming-glow:     rgba(108, 99, 255, 0.10);
+    --color-streaming-border:   rgba(108, 99, 255, 0.30);
+
+    --color-shimmer-base:       var(--primitive-neutral-100);
+    --color-shimmer-highlight:  var(--primitive-neutral-200);
+
+    --color-error:        var(--primitive-red-500);
+    --color-error-bg:     rgba(255, 68, 68, 0.06);
+    --color-error-border: rgba(255, 68, 68, 0.20);
+
+    --color-success:        var(--primitive-green-500);
+    --color-success-bg:     rgba(34, 197, 94, 0.06);
+    --color-success-border: rgba(34, 197, 94, 0.20);
+
+    --color-warning:        #d97706;
+    --color-warning-bg:     rgba(217, 119, 6, 0.06);
+    --color-warning-border: rgba(217, 119, 6, 0.20);
+
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+    --shadow-glow: 0 0 20px rgba(108,99,255,0.20);
+  }
+
+  /* ----------------------------------------------------------
+     BASE RESET
+     ---------------------------------------------------------- */
+  *, *::before, *::after {
     box-sizing: border-box;
     padding: 0;
     margin: 0;
   }
 
-  html,
-  body {
-    max-width: 100vw;
-    overflow-x: hidden;
-    background-color: var(--color-surface);
-    color: var(--color-text-primary);
+  html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
   }
 
-  /* 스크롤바 스타일 */
-  ::-webkit-scrollbar {
-    width: 6px;
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-normal);
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
   }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
+
+  /* 스크롤바 */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
     background: var(--color-border);
-    border-radius: 3px;
+    border-radius: var(--radius-full);
+    transition: background var(--duration-fast);
   }
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-text-muted);
-  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-border-strong); }
 
-  /* 코드 블록 하이라이팅 */
+  /* 코드 블록 */
   pre {
     background: #0d1117 !important;
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     overflow-x: auto;
+    padding: var(--space-4);
   }
 
   code {
-    font-family: "Fira Code", "Cascadia Code", "Consolas", monospace;
-    font-size: 0.875rem;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    font-feature-settings: "liga" 1, "calt" 1;
+  }
+
+  /* 포커스 링 전역 */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
 }
 
+/* ============================================================
+   COMPONENT TOKENS — 재사용 유틸리티 클래스
+   ============================================================ */
+@layer components {
+
+  /* ── 채팅 버블 ── */
+  .bubble-ai {
+    background: var(--color-bubble-ai);
+    border: 1px solid var(--color-bubble-ai-border);
+    border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-bubble) var(--radius-bubble-sm);
+    padding: var(--chat-bubble-padding-y) var(--chat-bubble-padding-x);
+    color: var(--color-text-primary);
+  }
+
+  .bubble-user {
+    background: var(--color-bubble-user);
+    border: 1px solid var(--color-bubble-user-border);
+    border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-bubble-sm) var(--radius-bubble);
+    padding: var(--chat-bubble-padding-y) var(--chat-bubble-padding-x);
+    color: var(--color-text-primary);
+  }
+
+  /* ── 스트리밍 상태 버블 ── */
+  .bubble-ai.is-streaming {
+    border-color: var(--color-streaming-border);
+    box-shadow: 0 0 0 1px var(--color-streaming-border),
+                0 0 16px var(--color-streaming-glow);
+    transition: border-color var(--duration-normal) var(--ease-out),
+                box-shadow var(--duration-normal) var(--ease-out);
+  }
+
+  /* ── 인라인 코드 ── */
+  .code-inline {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--color-surface-overlay);
+    color: var(--color-accent-hover, var(--color-accent));
+    padding: 0.15em 0.4em;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border-subtle);
+  }
+
+  /* ── glass 효과 ── */
+  .glass {
+    background: rgba(26, 26, 36, 0.85);
+    backdrop-filter: blur(12px) saturate(1.5);
+    -webkit-backdrop-filter: blur(12px) saturate(1.5);
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  [data-theme="light"] .glass {
+    background: rgba(255, 255, 255, 0.85);
+  }
+
+  /* ── 상태 배지 ── */
+  .status-error   { background: var(--color-error-bg);   color: var(--color-error);   border: 1px solid var(--color-error-border); }
+  .status-success { background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success-border); }
+  .status-warning { background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid var(--color-warning-border); }
+}
+
+/* ============================================================
+   UTILITY ANIMATIONS
+   ============================================================ */
 @layer utilities {
+
+  /* ── 스트리밍 커서 ── */
   .streaming-cursor::after {
     content: "▋";
     display: inline-block;
-    animation: blink 1s step-end infinite;
-    color: var(--color-accent);
+    color: var(--color-streaming-cursor);
     margin-left: 1px;
+    animation: streaming-blink var(--duration-slower) step-end infinite;
   }
 
-  .glass {
-    background: rgba(26, 26, 36, 0.8);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+  /* ── Shimmer 로딩 ── */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--color-shimmer-base)      0%,
+      var(--color-shimmer-highlight) 50%,
+      var(--color-shimmer-base)      100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer-sweep 1.6s var(--ease-default) infinite;
+    border-radius: var(--radius-sm);
   }
+
+  /* ── 타이핑 dots ── */
+  .typing-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--color-streaming-cursor);
+    animation: typing-bounce 1.2s var(--ease-default) infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  /* ── 텍스트 fade-in (스트리밍 청크) ── */
+  .chunk-appear {
+    animation: chunk-fade var(--duration-fast) var(--ease-out) both;
+  }
+
+  /* ── 메시지 슬라이드업 ── */
+  .message-enter {
+    animation: message-slide var(--duration-normal) var(--ease-spring) both;
+  }
+
+  /* ── 에러 shake ── */
+  .error-shake {
+    animation: shake var(--duration-slow) var(--ease-default);
+  }
+
+  /* ── 버튼 press ── */
+  .press:active { transform: scale(0.96); }
+}
+
+/* ============================================================
+   KEYFRAMES
+   ============================================================ */
+@keyframes streaming-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+@keyframes shimmer-sweep {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes typing-bounce {
+  0%, 80%, 100% { transform: translateY(0);    opacity: 0.4; }
+  40%            { transform: translateY(-6px); opacity: 1;   }
+}
+
+@keyframes chunk-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes message-slide {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-6px); }
+  40%       { transform: translateX(6px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
 }

@@ -19,7 +19,7 @@ export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
   return (
     <div
       className={clsx(
-        "group flex gap-3 px-4 py-3 animate-fade-in hover:bg-surface-raised/40 transition-colors",
+        "group flex gap-3 px-4 py-3 message-enter hover:bg-surface-raised/40 transition-colors duration-fast",
         isUser && "flex-row-reverse"
       )}
     >
@@ -70,11 +70,11 @@ export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
         {/* 메시지 본문 */}
         <div
           className={clsx(
-            "rounded-2xl px-4 py-3 text-sm leading-relaxed",
+            "text-sm leading-relaxed transition-shadow duration-normal",
             isUser
-              ? "bg-user-bubble text-text-primary rounded-tr-sm"
-              : "bg-ai-bubble text-text-primary rounded-tl-sm border border-[var(--color-border)]",
-            isError && "border-error/40 bg-error/5"
+              ? "bubble-user"
+              : clsx("bubble-ai", isStreaming && "is-streaming"),
+            isError && "status-error"
           )}
         >
           {isError ? (

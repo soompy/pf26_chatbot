@@ -8,7 +8,7 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ className, variant = "block", lines = 1 }: SkeletonProps) {
-  const base = "animate-skeleton-pulse bg-surface-overlay rounded";
+  const base = "shimmer rounded";
 
   if (variant === "text") {
     return (
@@ -34,7 +34,7 @@ export function Skeleton({ className, variant = "block", lines = 1 }: SkeletonPr
 
 export function MessageSkeleton() {
   return (
-    <div className="flex gap-3 px-4 py-3 animate-fade-in">
+    <div className="flex gap-3 px-4 py-3 animate-[fade-in_0.2s_ease-out]">
       <Skeleton variant="circle" className="h-8 w-8 shrink-0 mt-0.5" />
       <div className="flex-1 space-y-2 pt-1">
         <Skeleton variant="text" lines={3} />
