@@ -1,11 +1,5 @@
 import type { ChatRequest } from "@/features/chat/types/chat.types";
-
-export class StreamAbortError extends Error {
-  constructor() {
-    super("Stream aborted by user");
-    this.name = "StreamAbortError";
-  }
-}
+import { ModelError } from "@/lib/api/errors";
 
 /**
  * OpenAI-compatible SSE 스트림을 async generator로 래핑
@@ -23,8 +17,8 @@ export async function* streamChatCompletion(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Unknown error" }));
-    throw new Error(error.error ?? `HTTP ${response.status}`);
+    const err = await response.json().catch(() => ({}));
+    throw new ModelError(response.status, err.error ?? undefined);
   }
 
   if (!response.body) throw new Error("No response body");

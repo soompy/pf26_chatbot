@@ -2,7 +2,7 @@
 
 import { useCallback, useRef } from "react";
 import { useChatStore } from "../stores/chatStore";
-import { streamChatCompletion, StreamAbortError } from "@/lib/api/streaming";
+import { streamChatCompletion } from "@/lib/api/streaming";
 import type { Attachment } from "../types/chat.types";
 
 function generateId() {
@@ -87,7 +87,9 @@ export function useStreamingChat() {
           status: "done",
         });
       } catch (error) {
-        if (error instanceof StreamAbortError) {
+        const isDomAbort =
+          error instanceof DOMException && error.name === "AbortError";
+        if (isDomAbort) {
           // 사용자가 중단한 경우 현재 내용 유지
           updateMessage(threadId, assistantMessageId, { status: "done" });
         } else {
