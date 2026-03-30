@@ -116,7 +116,10 @@ export const useChatStore = create<ChatStore>()(
     }),
     {
       name: "chatbot-ui-store",
-      // Date 객체 직렬화 처리
+      // SSR/클라이언트 상태 불일치 방지:
+      // 서버에서는 localStorage를 읽지 않고 초기값 유지,
+      // 클라이언트 마운트 후 StoreHydration 컴포넌트가 rehydrate() 호출.
+      skipHydration: true,
       partialize: (state) => ({
         threads: state.threads,
         selectedModel: state.selectedModel,
