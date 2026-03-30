@@ -61,13 +61,60 @@ export const colors = {
   },
   /** AI 응답 특화 토큰 */
   ai: {
-    bubbleBg:          "var(--color-bubble-ai)",
-    bubbleBorder:      "var(--color-bubble-ai-border)",
-    streamingCursor:   "var(--color-streaming-cursor)",
-    streamingGlow:     "var(--color-streaming-glow)",
-    streamingBorder:   "var(--color-streaming-border)",
-    shimmerBase:       "var(--color-shimmer-base)",
-    shimmerHighlight:  "var(--color-shimmer-highlight)",
+    bubbleBg:         "var(--color-bubble-ai)",
+    bubbleBorder:     "var(--color-bubble-ai-border)",
+
+    /** 스트리밍 — 응답 텍스트 생성 중 */
+    streaming: {
+      cursor: "var(--color-streaming-cursor)",
+      glow:   "var(--color-streaming-glow)",
+      border: "var(--color-streaming-border)",
+    },
+
+    /** 추론 — 응답 생성 전 thinking 단계 */
+    thinking: {
+      cursor: "var(--color-thinking-cursor)",
+      bg:     "var(--color-thinking-bg)",
+      border: "var(--color-thinking-border)",
+      glow:   "var(--color-thinking-glow)",
+      text:   "var(--color-thinking-text)",
+    },
+
+    /** Tool / Function Call */
+    tool: {
+      bg:        "var(--color-tool-bg)",
+      border:    "var(--color-tool-border)",
+      text:      "var(--color-tool-text)",
+      headerBg:  "var(--color-tool-header-bg)",
+    },
+
+    /** Shimmer 로딩 */
+    shimmer: {
+      base:      "var(--color-shimmer-base)",
+      highlight: "var(--color-shimmer-highlight)",
+    },
+
+    /** 인용/참조 */
+    citation: {
+      bg:     "var(--color-citation-bg)",
+      border: "var(--color-citation-border)",
+      text:   "var(--color-citation-text)",
+    },
+
+    /** 코드 블록 헤더 */
+    codeBlock: {
+      headerBg:     "var(--color-code-header-bg)",
+      headerBorder: "var(--color-code-header-border)",
+      lang:         "var(--color-code-lang)",
+    },
+
+    /** 컨텍스트 윈도우 한계 인디케이터 */
+    contextWindow: {
+      track:   "var(--color-context-track)",
+      safe:    "var(--color-context-safe)",
+      warning: "var(--color-context-warning)",
+      danger:  "var(--color-context-danger)",
+    },
   },
   user: {
     bubbleBg:     "var(--color-bubble-user)",
