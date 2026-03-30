@@ -21,7 +21,7 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { Avatar } from "@/design-system/components/Avatar";
@@ -63,6 +63,25 @@ export interface MessageBubbleProps {
   /** 생성 시각 */
   createdAt?: Date;
   className?: string;
+}
+
+/* ── 타임스탬프 (클라이언트 전용) ──────────────────────── */
+
+/**
+ * SSR/클라이언트 로케일 불일치를 막기 위해
+ * 마운트 후에만 포맷된 시각 문자열을 표시.
+ */
+function useFormattedTime(date: Date | undefined) {
+  const [formatted, setFormatted] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!date) return;
+    setFormatted(
+      date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+    );
+  }, [date]);
+
+  return formatted;
 }
 
 /* ── 역할별 기본값 ─────────────────────────────────────── */
@@ -171,6 +190,8 @@ export function MessageBubble({
   const isSystem    = role === "system";
   const isError     = status === "error";
   const displayName = name ?? ROLE_DISPLAY[role];
+  // 클라이언트 마운트 후에만 포맷 (SSR 로케일 불일치 방지)
+  const timeLabel   = useFormattedTime(createdAt);
 
   const ariaLabel = [
     displayName,
@@ -223,16 +244,12 @@ export function MessageBubble({
             {model && (
               <span className="text-token-xs text-text-muted">{model}</span>
             )}
-            {createdAt && (
+            {createdAt && timeLabel && (
               <time
                 dateTime={createdAt.toISOString()}
                 className="text-token-xs text-text-muted"
-                title={createdAt.toLocaleString("ko-KR")}
               >
-                {createdAt.toLocaleTimeString("ko-KR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {timeLabel}
               </time>
             )}
           </div>
