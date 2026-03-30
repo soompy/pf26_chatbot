@@ -119,11 +119,40 @@
     --color-bubble-user:        #1e1c4a;
     --color-bubble-user-border: rgba(108, 99, 255, 0.25);
 
-    /* 스트리밍 상태 */
+    /* 스트리밍 상태 (응답 생성 중) */
     --color-streaming-cursor:   var(--primitive-violet-400);
     --color-streaming-text:     var(--primitive-neutral-50);
     --color-streaming-glow:     rgba(108, 99, 255, 0.20);
     --color-streaming-border:   rgba(108, 99, 255, 0.40);
+
+    /* 추론/사고 상태 (Thinking — 스트리밍 전 단계) */
+    --color-thinking-cursor:    var(--primitive-amber-400);
+    --color-thinking-bg:        rgba(251, 191, 36, 0.06);
+    --color-thinking-border:    rgba(251, 191, 36, 0.25);
+    --color-thinking-glow:      rgba(251, 191, 36, 0.12);
+    --color-thinking-text:      var(--primitive-amber-400);
+
+    /* Tool/Function Call 상태 */
+    --color-tool-bg:            rgba(96, 165, 250, 0.06);
+    --color-tool-border:        rgba(96, 165, 250, 0.25);
+    --color-tool-text:          var(--primitive-blue-400);
+    --color-tool-header-bg:     rgba(96, 165, 250, 0.10);
+
+    /* 코드 블록 헤더 */
+    --color-code-header-bg:     rgba(255, 255, 255, 0.04);
+    --color-code-header-border: var(--primitive-neutral-700);
+    --color-code-lang:          var(--primitive-neutral-400);
+
+    /* 컨텍스트 윈도우 한계 인디케이터 */
+    --color-context-safe:       var(--primitive-green-400);
+    --color-context-warning:    var(--primitive-amber-400);
+    --color-context-danger:     var(--primitive-red-400);
+    --color-context-track:      var(--primitive-neutral-800);
+
+    /* 인용/참조 */
+    --color-citation-bg:        rgba(108, 99, 255, 0.06);
+    --color-citation-border:    rgba(108, 99, 255, 0.25);
+    --color-citation-text:      var(--primitive-violet-300);
 
     /* 로딩 shimmer */
     --color-shimmer-base:       var(--primitive-neutral-800);
@@ -253,6 +282,32 @@
     --color-streaming-glow:     rgba(108, 99, 255, 0.10);
     --color-streaming-border:   rgba(108, 99, 255, 0.30);
 
+    /* 추론 상태 — light */
+    --color-thinking-cursor:    #d97706;
+    --color-thinking-bg:        rgba(217, 119, 6, 0.06);
+    --color-thinking-border:    rgba(217, 119, 6, 0.25);
+    --color-thinking-glow:      rgba(217, 119, 6, 0.10);
+    --color-thinking-text:      #d97706;
+
+    /* Tool Call — light */
+    --color-tool-bg:            rgba(59, 130, 246, 0.06);
+    --color-tool-border:        rgba(59, 130, 246, 0.20);
+    --color-tool-text:          #2563eb;
+    --color-tool-header-bg:     rgba(59, 130, 246, 0.08);
+
+    /* 코드 블록 헤더 — light */
+    --color-code-header-bg:     rgba(0, 0, 0, 0.03);
+    --color-code-header-border: var(--primitive-neutral-200);
+    --color-code-lang:          var(--primitive-neutral-500);
+
+    /* 컨텍스트 인디케이터 — light */
+    --color-context-track:      var(--primitive-neutral-200);
+
+    /* 인용 — light */
+    --color-citation-bg:        rgba(108, 99, 255, 0.05);
+    --color-citation-border:    rgba(108, 99, 255, 0.20);
+    --color-citation-text:      var(--primitive-violet-600);
+
     --color-shimmer-base:       var(--primitive-neutral-100);
     --color-shimmer-highlight:  var(--primitive-neutral-200);
 
@@ -362,6 +417,102 @@
                 box-shadow var(--duration-normal) var(--ease-out);
   }
 
+  /* ── 추론 상태 버블 (스트리밍 전 Thinking 단계) ── */
+  .bubble-ai.is-thinking {
+    border-color: var(--color-thinking-border);
+    box-shadow: 0 0 0 1px var(--color-thinking-border),
+                0 0 16px var(--color-thinking-glow);
+    transition: border-color var(--duration-normal) var(--ease-out),
+                box-shadow var(--duration-normal) var(--ease-out);
+  }
+
+  /* ── 에러 상태 버블 ── */
+  .bubble-ai.is-error {
+    border-color: var(--color-error-border);
+    background: var(--color-error-bg);
+  }
+
+  /* ── Tool/Function Call 블록 ── */
+  .tool-call {
+    background: var(--color-tool-bg);
+    border: 1px solid var(--color-tool-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  .tool-call-header {
+    background: var(--color-tool-header-bg);
+    border-bottom: 1px solid var(--color-tool-border);
+    padding: var(--space-2) var(--space-3);
+    color: var(--color-tool-text);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .tool-call-body {
+    padding: var(--space-3);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+  }
+
+  /* ── 코드 블록 헤더 ── */
+  .code-block-header {
+    background: var(--color-code-header-bg);
+    border-bottom: 1px solid var(--color-code-header-border);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    padding: var(--space-2) var(--space-4);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--color-code-lang);
+  }
+
+  /* code-block-header 다음에 오는 pre의 상단 radius 제거 */
+  .code-block-header + pre {
+    border-radius: 0 0 var(--radius-md) var(--radius-md) !important;
+    margin-top: 0;
+  }
+
+  /* ── 인용/참조 ── */
+  .citation {
+    background: var(--color-citation-bg);
+    border-left: 2px solid var(--color-citation-border);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: var(--space-2) var(--space-3);
+    color: var(--color-citation-text);
+    font-size: var(--font-size-sm);
+    font-style: italic;
+  }
+
+  /* ── 컨텍스트 윈도우 트래커 ── */
+  .context-bar {
+    height: 3px;
+    background: var(--color-context-track);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+  }
+
+  .context-bar-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width var(--duration-slow) var(--ease-out),
+                background-color var(--duration-normal) var(--ease-out);
+  }
+
+  .context-bar-fill[data-level="safe"]    { background: var(--color-context-safe); }
+  .context-bar-fill[data-level="warning"] { background: var(--color-context-warning); }
+  .context-bar-fill[data-level="danger"]  {
+    background: var(--color-context-danger);
+    animation: context-pulse 1.5s var(--ease-default) infinite;
+  }
+
   /* ── 인라인 코드 ── */
   .code-inline {
     font-family: var(--font-mono);
@@ -418,7 +569,7 @@
     border-radius: var(--radius-sm);
   }
 
-  /* ── 타이핑 dots ── */
+  /* ── 타이핑 dots (스트리밍) ── */
   .typing-dot {
     display: inline-block;
     width: 6px;
@@ -429,6 +580,18 @@
   }
   .typing-dot:nth-child(2) { animation-delay: 0.2s; }
   .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  /* ── 추론 dots (Thinking — 색상만 다름) ── */
+  .thinking-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--color-thinking-cursor);
+    animation: thinking-pulse 1.4s var(--ease-default) infinite;
+  }
+  .thinking-dot:nth-child(2) { animation-delay: 0.28s; }
+  .thinking-dot:nth-child(3) { animation-delay: 0.56s; }
 
   /* ── 텍스트 fade-in (스트리밍 청크) ── */
   .chunk-appear {
@@ -493,4 +656,29 @@
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* 추론 상태 펄스 (typing-bounce보다 느리고 부드럽게) */
+@keyframes thinking-pulse {
+  0%, 80%, 100% { transform: scale(1);    opacity: 0.35; }
+  40%           { transform: scale(1.15); opacity: 1;    }
+}
+
+/* 컨텍스트 위험 구간 — fill 색상 깜빡임 */
+@keyframes context-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+/* Tool call 완료 체크 등장 */
+@keyframes check-pop {
+  0%   { transform: scale(0) rotate(-10deg); opacity: 0; }
+  60%  { transform: scale(1.2) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg);   opacity: 1; }
+}
+
+/* 새 메시지 뱃지 bounce */
+@keyframes badge-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-4px); }
 }
