@@ -10,6 +10,13 @@ import { ThinkingIndicator, StreamingCursor } from "@/design-system/components/T
 import { ToolCallBlock } from "@/design-system/components/ToolCallBlock";
 import { ContextWindowBar } from "@/design-system/components/ContextWindowBar";
 import { CodeBlock } from "@/design-system/components/CodeBlock";
+// 핵심 채팅 컴포넌트
+import { MessageBubble } from "@/design-system/components/MessageBubble";
+import { ChatInput } from "@/design-system/components/ChatInput";
+import { StreamingText } from "@/design-system/components/StreamingText";
+import { StatusIndicator } from "@/design-system/components/StatusIndicator";
+import type { StatusState } from "@/design-system/components/StatusIndicator";
+import type { Attachment } from "@/features/chat/types/chat.types";
 
 /* ── 쇼케이스 레이아웃 헬퍼 ──────────────────────────────── */
 function Section({
@@ -529,6 +536,113 @@ export function useStream(url: string) {
           </div>
         </Section>
 
+        {/* ── NEW: MessageBubble ── */}
+        <Section
+          title="MessageBubble"
+          description="user / assistant / system 역할별 스타일 + streaming · thinking · error 상태. 복사·재생성 액션, ARIA article"
+        >
+          <div className="space-y-1 max-w-2xl">
+            <MessageBubble
+              role="system"
+              content="AI 어시스턴트 모드가 활성화되었습니다."
+              status="done"
+            />
+            <MessageBubble
+              role="user"
+              content="스트리밍 응답 구현 방법을 알려줘."
+              status="done"
+              createdAt={new Date(Date.now() - 60000)}
+              attachments={[{
+                id: "1", type: "file", name: "spec.md",
+                url: "#", mimeType: "text/markdown", size: 8192,
+              }]}
+            />
+            <MessageBubble
+              role="assistant"
+              content={`Next.js Route Handler에서 **ReadableStream**을 반환하면 됩니다.\n\n청크 단위로 \`controller.enqueue()\`를 호출하면 클라이언트가 실시간으로 받습니다.`}
+              status="done"
+              model="claude-sonnet-4-6"
+              tokenCount={128}
+              createdAt={new Date(Date.now() - 30000)}
+              onCopy={() => {}}
+              onRegenerate={() => {}}
+            />
+            <MessageBubble
+              role="assistant"
+              content=""
+              status="streaming"
+              isThinking
+            />
+            <MessageBubble
+              role="assistant"
+              content="스트리밍 중인 응답 텍스트입니다"
+              status="streaming"
+              isStreaming
+            />
+            <MessageBubble
+              role="assistant"
+              content=""
+              status="error"
+              onRegenerate={() => {}}
+            />
+          </div>
+        </Section>
+
+        {/* ── NEW: StreamingText ── */}
+        <Section
+          title="StreamingText"
+          description="단락 단위 chunk-appear 애니메이션 + 마크다운 파싱. aria-live='polite', aria-busy로 스크린리더 대응"
+        >
+          <StreamingTextShowcase />
+        </Section>
+
+        {/* ── NEW: StatusIndicator ── */}
+        <Section
+          title="StatusIndicator"
+          description="idle→loading→thinking→streaming→success→error 상태 머신. inline / banner / dot 세 변형"
+        >
+          <div className="space-y-6">
+            <Row label="inline">
+              <StatusIndicator status="loading"   variant="inline" />
+              <StatusIndicator status="thinking"  variant="inline" />
+              <StatusIndicator status="streaming" variant="inline" />
+              <StatusIndicator status="success"   variant="inline" successAutoDismiss={0} />
+              <StatusIndicator status="error"     variant="inline" onRetry={() => {}} />
+            </Row>
+            <Row label="banner" vertical>
+              {(["loading", "thinking", "streaming", "success", "error"] as StatusState[]).map((s) => (
+                <StatusIndicator
+                  key={s}
+                  status={s}
+                  variant="banner"
+                  successAutoDismiss={0}
+                  className="max-w-md"
+                  onRetry={s === "error" ? () => {} : undefined}
+                />
+              ))}
+            </Row>
+            <Row label="dot">
+              {(["loading", "thinking", "streaming", "success", "error"] as StatusState[]).map((s) => (
+                <div key={s} className="flex flex-col items-center gap-1.5">
+                  <StatusIndicator status={s} variant="dot" />
+                  <span className="text-[10px] text-text-muted">{s}</span>
+                </div>
+              ))}
+            </Row>
+            <Row label="상태 전환 시뮬레이션">
+              <StatusMachineDemo />
+            </Row>
+          </div>
+        </Section>
+
+        {/* ── NEW: ChatInput ── */}
+        <Section
+          title="ChatInput"
+          description="멀티라인 자동 확장, 파일 첨부 (클릭 + Drag&Drop), 글자 수 카운터. role=form, aria-describedby"
+        >
+          <ChatInputShowcase />
+        </Section>
+
         {/* ── 14. 상태 배지 / Citation ── */}
         <Section title="Status & Citation" description=".status-* / .citation 유틸리티 클래스">
           <Row label="Status 배지">
@@ -576,6 +690,114 @@ export function useStream(url: string) {
       <footer className="border-t border-line text-center py-8 text-token-xs text-text-muted">
         AI Chatbot UI Design System — Primitive → Semantic → Component
       </footer>
+    </div>
+  );
+}
+
+/* ── StreamingText 쇼케이스 ─────────────────────────────── */
+const STREAM_SAMPLE = `## 스트리밍 응답 예시
+
+Next.js와 Vercel AI SDK를 조합하면 서버에서 직접 스트리밍 응답을 전송할 수 있습니다.
+
+\`\`\`typescript
+export async function POST(req: Request) {
+  const stream = openai.chat.completions.stream({ model: "gpt-4o", messages });
+  return new StreamingTextResponse(stream);
+}
+\`\`\`
+
+> 단락 단위로 **chunk-appear** 애니메이션이 적용됩니다.`;
+
+function StreamingTextShowcase() {
+  const [content, setContent]     = useState("");
+  const [isStreaming, setStreaming] = useState(false);
+
+  function start() {
+    if (isStreaming) return;
+    setContent("");
+    setStreaming(true);
+    let i = 0;
+    const t = setInterval(() => {
+      i += 4;
+      setContent(STREAM_SAMPLE.slice(0, i));
+      if (i >= STREAM_SAMPLE.length) { clearInterval(t); setStreaming(false); }
+    }, 25);
+  }
+
+  return (
+    <div className="space-y-3 max-w-lg">
+      <div className="bubble-ai p-4 min-h-[60px]">
+        {content || isStreaming
+          ? <StreamingText content={content} isStreaming={isStreaming} />
+          : <span className="text-text-muted text-token-sm">버튼을 눌러 시작</span>
+        }
+      </div>
+      <Button size="sm" variant="secondary" onClick={start} disabled={isStreaming}>
+        {isStreaming ? "스트리밍 중…" : "▶ 재생"}
+      </Button>
+    </div>
+  );
+}
+
+/* ── StatusIndicator 상태 머신 데모 ─────────────────────── */
+function StatusMachineDemo() {
+  const [status, setStatus] = useState<StatusState>("idle");
+
+  async function simulate() {
+    const steps: [StatusState, number][] = [
+      ["loading", 600], ["thinking", 1200], ["streaming", 1800], ["success", 800], ["idle", 0],
+    ];
+    for (const [s, delay] of steps) {
+      setStatus(s);
+      if (delay) await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-3 flex-wrap">
+      <Button
+        size="sm"
+        variant="secondary"
+        onClick={simulate}
+        disabled={status !== "idle"}
+      >
+        {status === "idle" ? "▶ 시뮬레이션" : "실행 중..."}
+      </Button>
+      {status !== "idle" && (
+        <StatusIndicator status={status} variant="inline" successAutoDismiss={0} />
+      )}
+    </div>
+  );
+}
+
+/* ── ChatInput 쇼케이스 ──────────────────────────────────── */
+function ChatInputShowcase() {
+  const [log, setLog]           = useState<string[]>([]);
+  const [isStreaming, setStream] = useState(false);
+
+  function handleSubmit(content: string, attachments: Attachment[]) {
+    const entry = attachments.length
+      ? `"${content}" + ${attachments.length}개 파일`
+      : `"${content}"`;
+    setLog((p) => [entry, ...p].slice(0, 5));
+    setStream(true);
+    setTimeout(() => setStream(false), 2000);
+  }
+
+  return (
+    <div className="space-y-3 max-w-2xl">
+      {log.length > 0 && (
+        <div className="text-token-xs text-text-muted space-y-1 p-3 bg-surface rounded-token border border-line">
+          <p className="font-medium mb-1">전송 로그:</p>
+          {log.map((l, i) => <p key={i}>{l}</p>)}
+        </div>
+      )}
+      <ChatInput
+        onSubmit={handleSubmit}
+        onStop={() => setStream(false)}
+        isStreaming={isStreaming}
+        maxLength={500}
+      />
     </div>
   );
 }
