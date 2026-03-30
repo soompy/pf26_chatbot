@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/design-system/components/Button";
 import { Badge } from "@/design-system/components/Badge";
 import { Avatar } from "@/design-system/components/Avatar";
@@ -541,51 +541,7 @@ export function useStream(url: string) {
           title="MessageBubble"
           description="user / assistant / system 역할별 스타일 + streaming · thinking · error 상태. 복사·재생성 액션, ARIA article"
         >
-          <div className="space-y-1 max-w-2xl">
-            <MessageBubble
-              role="system"
-              content="AI 어시스턴트 모드가 활성화되었습니다."
-              status="done"
-            />
-            <MessageBubble
-              role="user"
-              content="스트리밍 응답 구현 방법을 알려줘."
-              status="done"
-              createdAt={new Date(Date.now() - 60000)}
-              attachments={[{
-                id: "1", type: "file", name: "spec.md",
-                url: "#", mimeType: "text/markdown", size: 8192,
-              }]}
-            />
-            <MessageBubble
-              role="assistant"
-              content={`Next.js Route Handler에서 **ReadableStream**을 반환하면 됩니다.\n\n청크 단위로 \`controller.enqueue()\`를 호출하면 클라이언트가 실시간으로 받습니다.`}
-              status="done"
-              model="claude-sonnet-4-6"
-              tokenCount={128}
-              createdAt={new Date(Date.now() - 30000)}
-              onCopy={() => {}}
-              onRegenerate={() => {}}
-            />
-            <MessageBubble
-              role="assistant"
-              content=""
-              status="streaming"
-              isThinking
-            />
-            <MessageBubble
-              role="assistant"
-              content="스트리밍 중인 응답 텍스트입니다"
-              status="streaming"
-              isStreaming
-            />
-            <MessageBubble
-              role="assistant"
-              content=""
-              status="error"
-              onRegenerate={() => {}}
-            />
-          </div>
+          <MessageBubbleShowcase />
         </Section>
 
         {/* ── NEW: StreamingText ── */}
@@ -690,6 +646,59 @@ export function useStream(url: string) {
       <footer className="border-t border-line text-center py-8 text-token-xs text-text-muted">
         AI Chatbot UI Design System — Primitive → Semantic → Component
       </footer>
+    </div>
+  );
+}
+
+/* ── MessageBubble 쇼케이스 ─────────────────────────────── */
+function MessageBubbleShowcase() {
+  // useEffect: 클라이언트 마운트 후에만 날짜 계산
+  // → SSR 시에는 null, 클라이언트에서만 실제 값 주입 (hydration 불일치 방지)
+  const [dates, setDates] = useState<{ user: Date; assistant: Date } | null>(null);
+
+  useEffect(() => {
+    const now = Date.now();
+    setDates({
+      user:      new Date(now - 60000),
+      assistant: new Date(now - 30000),
+    });
+  }, []);
+
+  return (
+    <div className="space-y-1 max-w-2xl">
+      <MessageBubble
+        role="system"
+        content="AI 어시스턴트 모드가 활성화되었습니다."
+        status="done"
+      />
+      <MessageBubble
+        role="user"
+        content="스트리밍 응답 구현 방법을 알려줘."
+        status="done"
+        createdAt={dates?.user}
+        attachments={[{
+          id: "1", type: "file", name: "spec.md",
+          url: "#", mimeType: "text/markdown", size: 8192,
+        }]}
+      />
+      <MessageBubble
+        role="assistant"
+        content={`Next.js Route Handler에서 **ReadableStream**을 반환하면 됩니다.\n\n청크 단위로 \`controller.enqueue()\`를 호출하면 클라이언트가 실시간으로 받습니다.`}
+        status="done"
+        model="claude-sonnet-4-6"
+        tokenCount={128}
+        createdAt={dates?.assistant}
+        onCopy={() => {}}
+        onRegenerate={() => {}}
+      />
+      <MessageBubble role="assistant" content="" status="streaming" isThinking />
+      <MessageBubble
+        role="assistant"
+        content="스트리밍 중인 응답 텍스트입니다"
+        status="streaming"
+        isStreaming
+      />
+      <MessageBubble role="assistant" content="" status="error" onRegenerate={() => {}} />
     </div>
   );
 }
