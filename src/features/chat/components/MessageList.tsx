@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useChatStore } from "../stores/chatStore";
+import { useChatContext } from "../context/ChatContext";
 import { MessageBubble } from "./MessageBubble";
 import { MessageSkeleton } from "@/design-system";
 
@@ -9,6 +10,12 @@ export function MessageList() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const thread = useChatStore((s) => s.getActiveThread());
   const streamingMessageId = useChatStore((s) => s.streamingMessageId);
+  const { regenerate, isStreaming } = useChatContext();
+
+  const handleRegenerate = useCallback(
+    (messageId: string) => () => regenerate(messageId),
+    [regenerate]
+  );
 
   // 새 메시지마다 스크롤 하단으로
   useEffect(() => {
@@ -54,6 +61,11 @@ export function MessageList() {
           key={message.id}
           message={message}
           isStreaming={message.id === streamingMessageId}
+          onRegenerate={
+            message.role === "assistant" && message.status === "done" && !isStreaming
+              ? handleRegenerate(message.id)
+              : undefined
+          }
         />
       ))}
 

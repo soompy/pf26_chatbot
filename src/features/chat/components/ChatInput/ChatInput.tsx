@@ -8,12 +8,12 @@
 "use client";
 
 import { ChatInput as BaseChatInput } from "@/design-system/components/ChatInput";
-import { useChat } from "../../hooks/useChat";
+import { useChatContext } from "../../context/ChatContext";
 import { ChatErrorBanner } from "../ChatErrorBanner";
 import type { Attachment } from "../../types/chat.types";
 
 export function ChatInput() {
-  const { sendMessage, stopStreaming, retry, isStreaming, error, clearError } = useChat();
+  const { sendMessage, stopStreaming, retry, isStreaming, error, clearError } = useChatContext();
 
   return (
     <div className="flex flex-col">

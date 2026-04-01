@@ -19,6 +19,7 @@ interface ChatStore {
   deleteThread: (id: string) => void;
   addMessage: (threadId: string, message: Message) => void;
   updateMessage: (threadId: string, messageId: string, patch: Partial<Message>) => void;
+  removeMessage: (threadId: string, messageId: string) => void;
   setStreamingMessageId: (id: string | null) => void;
   setModel: (model: ModelId) => void;
 
@@ -99,6 +100,19 @@ export const useChatStore = create<ChatStore>()(
                   messages: t.messages.map((m) =>
                     m.id === messageId ? { ...m, ...patch } : m
                   ),
+                  updatedAt: new Date(),
+                }
+              : t
+          ),
+        })),
+
+      removeMessage: (threadId, messageId) =>
+        set((state) => ({
+          threads: state.threads.map((t) =>
+            t.id === threadId
+              ? {
+                  ...t,
+                  messages: t.messages.filter((m) => m.id !== messageId),
                   updatedAt: new Date(),
                 }
               : t

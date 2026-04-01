@@ -4,11 +4,14 @@ import { ModelSelector } from "./ModelSelector";
 import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
 import { useChatStore } from "../stores/chatStore";
+import { useChat } from "../hooks/useChat";
+import { ChatProvider } from "../context/ChatContext";
 import { ThemeToggle } from "@/design-system";
 import { useEffect } from "react";
 
 export function ChatWindow() {
   const { activeThreadId, createThread } = useChatStore();
+  const chat = useChat();
 
   // 첫 진입 시 스레드 자동 생성
   useEffect(() => {
@@ -16,6 +19,7 @@ export function ChatWindow() {
   }, [activeThreadId, createThread]);
 
   return (
+    <ChatProvider value={chat}>
     <div className="flex-1 flex flex-col h-full min-w-0">
       {/* 헤더 */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-[var(--color-border)] glass">
@@ -35,5 +39,6 @@ export function ChatWindow() {
       {/* 입력창 */}
       <ChatInput />
     </div>
+    </ChatProvider>
   );
 }

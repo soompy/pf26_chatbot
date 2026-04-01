@@ -39,6 +39,8 @@ export interface UseChatReturn {
   stopStreaming: () => void;
   /** 마지막 실패 요청을 동일 인자로 재시도 */
   retry: () => void;
+  /** assistant 메시지를 삭제하고 동일 컨텍스트로 재생성 */
+  regenerate: (assistantMessageId: string) => Promise<void>;
   /** 스트리밍 진행 중 여부 */
   isStreaming: boolean;
   /** 분류된 에러. null이면 정상 상태 */
@@ -54,6 +56,7 @@ export function useChat(): UseChatReturn {
     createThread,
     addMessage,
     updateMessage,
+    removeMessage,
     setStreamingMessageId,
     getActiveThread,
   } = useChatStore();
@@ -206,5 +209,95 @@ export function useChat(): UseChatReturn {
     _execute(content, attachments);
   }, [_execute]);
 
-  return { sendMessage, stopStreaming, retry, isStreaming, error, clearError };
+  const regenerate = useCallback(
+    async (assistantMessageId: string) => {
+      if (isStreaming) return;
+      const thread = getActiveThread();
+      if (!thread) return;
+      const threadId = thread.id;
+
+      // removeMessage 이전의 스냅샷으로 히스토리 구성
+      // (제거 대상 assistant 메시지를 제외한 done 메시지만)
+      const historyMessages = thread.messages
+        .filter((m) => m.id !== assistantMessageId && m.status === "done")
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      // 직전 user 메시지가 없으면 재생성 불가
+      if (!historyMessages.some((m) => m.role === "user")) return;
+
+      // 기존 assistant 메시지 제거
+      removeMessage(threadId, assistantMessageId);
+
+      setError(null);
+      isTimeoutRef.current = false;
+
+      // 새 assistant 플레이스홀더
+      const newAssistantMsgId = generateId();
+      addMessage(threadId, {
+        id: newAssistantMsgId,
+        role: "assistant",
+        content: "",
+        status: "streaming",
+        createdAt: new Date(),
+        model: selectedModel,
+      });
+      setStreamingMessageId(newAssistantMsgId);
+
+      abortControllerRef.current = new AbortController();
+      const { signal } = abortControllerRef.current;
+
+      timeoutIdRef.current = setTimeout(() => {
+        isTimeoutRef.current = true;
+        abortControllerRef.current?.abort();
+      }, TIMEOUT_MS);
+
+      try {
+        let accumulated = "";
+        const stream = streamChatCompletion(
+          { messages: historyMessages, model: selectedModel, stream: true },
+          signal
+        );
+        for await (const chunk of stream) {
+          accumulated += chunk;
+          updateMessage(threadId, newAssistantMsgId, {
+            content: accumulated,
+            status: "streaming",
+          });
+        }
+        updateMessage(threadId, newAssistantMsgId, {
+          content: accumulated,
+          status: "done",
+        });
+      } catch (err) {
+        const chatErr = isTimeoutRef.current
+          ? new TimeoutError(TIMEOUT_MS)
+          : toChatError(err);
+
+        if (chatErr instanceof AbortError) {
+          updateMessage(threadId, newAssistantMsgId, { status: "done" });
+        } else {
+          updateMessage(threadId, newAssistantMsgId, { content: "", status: "error" });
+          setError(chatErr);
+        }
+      } finally {
+        if (timeoutIdRef.current) {
+          clearTimeout(timeoutIdRef.current);
+          timeoutIdRef.current = null;
+        }
+        setStreamingMessageId(null);
+        abortControllerRef.current = null;
+      }
+    },
+    [
+      isStreaming,
+      selectedModel,
+      getActiveThread,
+      removeMessage,
+      addMessage,
+      updateMessage,
+      setStreamingMessageId,
+    ]
+  );
+
+  return { sendMessage, stopStreaming, retry, regenerate, isStreaming, error, clearError };
 }
