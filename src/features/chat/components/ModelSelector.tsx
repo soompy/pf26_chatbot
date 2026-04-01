@@ -4,7 +4,8 @@ import { useChatStore } from "../stores/chatStore";
 import { Badge } from "@/design-system";
 import type { ModelId, ModelOption } from "../types/chat.types";
 import { ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 const MODEL_OPTIONS: ModelOption[] = [
   {
@@ -44,12 +45,23 @@ const MODEL_OPTIONS: ModelOption[] = [
 export function ModelSelector() {
   const { selectedModel, setModel } = useChatStore();
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // 버튼 위치 기반으로 드롭다운 좌표 계산
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+    }
+  }, [isOpen]);
 
   const current = MODEL_OPTIONS.find((m) => m.id === selectedModel)!;
 
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen((prev) => !prev)}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-raised border border-[var(--color-border)] hover:border-accent/40 text-sm text-text-secondary hover:text-text-primary transition-all"
       >
@@ -59,10 +71,15 @@ export function ModelSelector() {
         />
       </button>
 
-      {isOpen && (
+      {isOpen && createPortal(
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-full mt-1 left-0 z-20 w-64 bg-surface-raised border border-[var(--color-border)] rounded-xl shadow-xl overflow-hidden animate-slide-up">
+          {/* 클릭 외부 감지 오버레이 — body 직속으로 렌더링 */}
+          <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)} />
+          {/* 드롭다운 패널 — backdrop-filter stacking context 밖에 위치 */}
+          <div
+            className="fixed z-[9999] w-64 bg-surface-raised border border-[var(--color-border)] rounded-xl shadow-xl overflow-hidden animate-slide-up"
+            style={{ top: dropdownPos.top, left: dropdownPos.left }}
+          >
             {MODEL_OPTIONS.map((model) => (
               <ModelOption
                 key={model.id}
@@ -75,7 +92,8 @@ export function ModelSelector() {
               />
             ))}
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );
