@@ -22,7 +22,7 @@ export function ChatWindow() {
     <ChatProvider value={chat}>
     <div className="flex-1 flex flex-col h-full min-w-0">
       {/* 헤더 */}
-      <header className="flex items-center justify-between px-6 py-3 border-b border-[var(--color-border)] glass">
+      <header className="relative z-10 flex items-center justify-between px-6 py-3 border-b border-[var(--color-border)] glass">
         <div>
           <h1 className="text-sm font-semibold text-text-primary">AI Chat</h1>
           <p className="text-xs text-text-muted">스트리밍 응답 · 멀티모달 입력</p>
