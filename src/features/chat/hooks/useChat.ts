@@ -135,7 +135,10 @@ export function useChat(): UseChatReturn {
             model: selectedModel,
             stream: true,
           },
-          signal
+          signal,
+          (completionTokens) => {
+            updateMessage(threadId, assistantMsgId, { tokenCount: completionTokens });
+          }
         );
 
         for await (const chunk of stream) {
@@ -255,7 +258,10 @@ export function useChat(): UseChatReturn {
         let accumulated = "";
         const stream = streamChatCompletion(
           { messages: historyMessages, model: selectedModel, stream: true },
-          signal
+          signal,
+          (completionTokens) => {
+            updateMessage(threadId, newAssistantMsgId, { tokenCount: completionTokens });
+          }
         );
         for await (const chunk of stream) {
           accumulated += chunk;

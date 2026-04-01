@@ -66,6 +66,8 @@ export async function POST(req: NextRequest) {
             ? [{ role: "system", content: systemPrompt }, ...messages]
             : messages,
           stream: true,
+          // 스트리밍 완료 시 마지막 청크에 usage 정보 포함
+          stream_options: { include_usage: true },
         }),
       });
 
@@ -123,12 +125,25 @@ function transformAnthropicStream(body: ReadableStream<Uint8Array>): ReadableStr
             if (!line.startsWith("data: ")) continue;
             try {
               const event = JSON.parse(line.slice(6));
+
+              // 텍스트 델타
               if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
                 const openaiChunk = {
                   choices: [{ delta: { content: event.delta.text } }],
                 };
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify(openaiChunk)}\n\n`)
+                );
+              }
+
+              // 완료 토큰 수: message_delta 이벤트의 usage.output_tokens
+              if (event.type === "message_delta" && event.usage?.output_tokens) {
+                const usageChunk = {
+                  choices: [],
+                  usage: { completion_tokens: event.usage.output_tokens },
+                };
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify(usageChunk)}\n\n`)
                 );
               }
             } catch {

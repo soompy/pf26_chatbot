@@ -4,10 +4,15 @@ import { ModelError } from "@/lib/api/errors";
 /**
  * OpenAI-compatible SSE 스트림을 async generator로 래핑
  * 청크 단위로 텍스트 델타를 yield한다.
+ *
+ * @param onUsage 스트림 완료 시 completion token 수를 받는 콜백.
+ *   OpenAI: stream_options.include_usage=true 로 마지막 청크에 포함.
+ *   Anthropic: message_delta 이벤트의 usage.output_tokens를 변환해 전달.
  */
 export async function* streamChatCompletion(
   body: ChatRequest,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onUsage?: (completionTokens: number) => void
 ): AsyncGenerator<string> {
   const response = await fetch("/api/chat", {
     method: "POST",
@@ -45,6 +50,16 @@ export async function* streamChatCompletion(
 
         try {
           const parsed = JSON.parse(data);
+
+          // usage 청크: choices가 비어있고 usage.completion_tokens가 있는 경우
+          if (
+            parsed.usage?.completion_tokens != null &&
+            (!parsed.choices || parsed.choices.length === 0)
+          ) {
+            onUsage?.(parsed.usage.completion_tokens);
+            continue;
+          }
+
           const delta = parsed.choices?.[0]?.delta?.content;
           if (typeof delta === "string") yield delta;
         } catch {
