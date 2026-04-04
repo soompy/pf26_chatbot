@@ -1,10 +1,50 @@
 import { NextRequest } from "next/server";
+import type { Attachment } from "@/features/chat/types/chat.types";
 
 export const runtime = "edge";
 
+/** 마지막 user 메시지에 이미지 첨부가 있을 때 OpenAI vision 포맷으로 변환 */
+function buildOpenAIMessages(
+  messages: { role: string; content: string }[],
+  attachments?: Attachment[]
+) {
+  if (!attachments?.length) return messages;
+  const history = messages.slice(0, -1);
+  const last = messages[messages.length - 1];
+  const contentParts: unknown[] = [{ type: "text", text: last.content }];
+  for (const att of attachments) {
+    if (att.type === "image") {
+      contentParts.push({ type: "image_url", image_url: { url: att.url, detail: "auto" } });
+    }
+  }
+  return [...history, { role: "user", content: contentParts }];
+}
+
+/** 마지막 user 메시지에 이미지 첨부가 있을 때 Anthropic vision 포맷으로 변환 */
+function buildAnthropicMessages(
+  messages: { role: string; content: string }[],
+  attachments?: Attachment[]
+) {
+  if (!attachments?.length) return messages;
+  const history = messages.slice(0, -1);
+  const last = messages[messages.length - 1];
+  const contentParts: unknown[] = [];
+  for (const att of attachments) {
+    if (att.type === "image") {
+      const data = att.url.split(",")[1]; // data:image/jpeg;base64,<DATA>
+      contentParts.push({
+        type: "image",
+        source: { type: "base64", media_type: att.mimeType, data },
+      });
+    }
+  }
+  contentParts.push({ type: "text", text: last.content });
+  return [...history, { role: "user", content: contentParts }];
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { messages, model, systemPrompt } = body;
+  const { messages, model, systemPrompt, attachments } = body;
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -39,7 +79,7 @@ export async function POST(req: NextRequest) {
           max_tokens: 4096,
           stream: true,
           system: systemPrompt,
-          messages,
+          messages: buildAnthropicMessages(messages, attachments),
         }),
       });
 
@@ -54,6 +94,7 @@ export async function POST(req: NextRequest) {
       });
     } else {
       // OpenAI API (gpt-*)
+      const openaiMessages = buildOpenAIMessages(messages, attachments);
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -63,8 +104,8 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           model,
           messages: systemPrompt
-            ? [{ role: "system", content: systemPrompt }, ...messages]
-            : messages,
+            ? [{ role: "system", content: systemPrompt }, ...openaiMessages]
+            : openaiMessages,
           stream: true,
           // 스트리밍 완료 시 마지막 청크에 usage 정보 포함
           stream_options: { include_usage: true },
@@ -133,6 +174,17 @@ function transformAnthropicStream(body: ReadableStream<Uint8Array>): ReadableStr
                 };
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify(openaiChunk)}\n\n`)
+                );
+              }
+
+              // 입력 토큰 수: message_start 이벤트의 message.usage.input_tokens
+              if (event.type === "message_start" && event.message?.usage?.input_tokens) {
+                const usageChunk = {
+                  choices: [],
+                  usage: { prompt_tokens: event.message.usage.input_tokens },
+                };
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify(usageChunk)}\n\n`)
                 );
               }
 

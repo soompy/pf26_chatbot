@@ -175,15 +175,24 @@ export function ChatInput({
     (files: File[]) => {
       const remaining = maxAttachments - attachments.length;
       const toAdd = files.slice(0, remaining);
-      const newAttachments: Attachment[] = toAdd.map((file) => ({
-        id:       `${Date.now()}-${file.name}`,
-        type:     file.type.startsWith("image/") ? "image" : "file",
-        name:     file.name,
-        url:      URL.createObjectURL(file),
-        mimeType: file.type,
-        size:     file.size,
-      }));
-      setAttachments((prev) => [...prev, ...newAttachments]);
+      toAdd.forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const url = e.target?.result as string; // base64 data URL
+          setAttachments((prev) => [
+            ...prev,
+            {
+              id:       `${Date.now()}-${file.name}`,
+              type:     file.type.startsWith("image/") ? "image" : "file",
+              name:     file.name,
+              url,
+              mimeType: file.type,
+              size:     file.size,
+            },
+          ]);
+        };
+        reader.readAsDataURL(file);
+      });
     },
     [attachments.length, maxAttachments],
   );
@@ -197,11 +206,7 @@ export function ChatInput({
   );
 
   const removeAttachment = useCallback((id: string) => {
-    setAttachments((prev) => {
-      const removed = prev.find((a) => a.id === id);
-      if (removed) URL.revokeObjectURL(removed.url);
-      return prev.filter((a) => a.id !== id);
-    });
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
   /* ── Drag & Drop ── */

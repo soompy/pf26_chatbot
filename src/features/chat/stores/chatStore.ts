@@ -13,6 +13,12 @@ interface ChatStore {
   // 스트리밍 메시지 ID (진행 중인 스트림 추적)
   streamingMessageId: string | null;
 
+  // 시스템 프롬프트
+  systemPrompt: string;
+
+  // 컨텍스트 윈도우 사용 토큰 수 (마지막 요청의 input_tokens)
+  contextTokens: number;
+
   // Actions
   createThread: () => string;
   selectThread: (id: string) => void;
@@ -22,6 +28,8 @@ interface ChatStore {
   removeMessage: (threadId: string, messageId: string) => void;
   setStreamingMessageId: (id: string | null) => void;
   setModel: (model: ModelId) => void;
+  setSystemPrompt: (prompt: string) => void;
+  setContextTokens: (tokens: number) => void;
 
   // 현재 스레드 getter
   getActiveThread: () => Thread | undefined;
@@ -38,6 +46,8 @@ export const useChatStore = create<ChatStore>()(
       threads: [],
       selectedModel: "gpt-4o",
       streamingMessageId: null,
+      systemPrompt: "",
+      contextTokens: 0,
 
       createThread: () => {
         const id = generateId();
@@ -123,6 +133,10 @@ export const useChatStore = create<ChatStore>()(
 
       setModel: (model) => set({ selectedModel: model }),
 
+      setSystemPrompt: (prompt) => set({ systemPrompt: prompt }),
+
+      setContextTokens: (tokens) => set({ contextTokens: tokens }),
+
       getActiveThread: () => {
         const { threads, activeThreadId } = get();
         return threads.find((t) => t.id === activeThreadId);
@@ -138,6 +152,7 @@ export const useChatStore = create<ChatStore>()(
         threads: state.threads,
         selectedModel: state.selectedModel,
         activeThreadId: state.activeThreadId,
+        systemPrompt: state.systemPrompt,
       }),
     }
   )

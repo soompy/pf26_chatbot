@@ -53,11 +53,13 @@ export function useChat(): UseChatReturn {
   const {
     activeThreadId,
     selectedModel,
+    systemPrompt,
     createThread,
     addMessage,
     updateMessage,
     removeMessage,
     setStreamingMessageId,
+    setContextTokens,
     getActiveThread,
   } = useChatStore();
 
@@ -134,10 +136,17 @@ export function useChat(): UseChatReturn {
             messages: [...history, { role: "user", content: content.trim() }],
             model: selectedModel,
             stream: true,
+            systemPrompt: systemPrompt || undefined,
+            attachments,
           },
           signal,
-          (completionTokens) => {
-            updateMessage(threadId, assistantMsgId, { tokenCount: completionTokens });
+          ({ completionTokens, inputTokens }) => {
+            if (completionTokens != null) {
+              updateMessage(threadId, assistantMsgId, { tokenCount: completionTokens });
+            }
+            if (inputTokens != null) {
+              setContextTokens(inputTokens);
+            }
           }
         );
 
@@ -183,10 +192,12 @@ export function useChat(): UseChatReturn {
     [
       activeThreadId,
       selectedModel,
+      systemPrompt,
       createThread,
       addMessage,
       updateMessage,
       setStreamingMessageId,
+      setContextTokens,
       getActiveThread,
     ]
   );
@@ -257,10 +268,15 @@ export function useChat(): UseChatReturn {
       try {
         let accumulated = "";
         const stream = streamChatCompletion(
-          { messages: historyMessages, model: selectedModel, stream: true },
+          { messages: historyMessages, model: selectedModel, stream: true, systemPrompt: systemPrompt || undefined },
           signal,
-          (completionTokens) => {
-            updateMessage(threadId, newAssistantMsgId, { tokenCount: completionTokens });
+          ({ completionTokens, inputTokens }) => {
+            if (completionTokens != null) {
+              updateMessage(threadId, newAssistantMsgId, { tokenCount: completionTokens });
+            }
+            if (inputTokens != null) {
+              setContextTokens(inputTokens);
+            }
           }
         );
         for await (const chunk of stream) {
@@ -297,11 +313,13 @@ export function useChat(): UseChatReturn {
     [
       isStreaming,
       selectedModel,
+      systemPrompt,
       getActiveThread,
       removeMessage,
       addMessage,
       updateMessage,
       setStreamingMessageId,
+      setContextTokens,
     ]
   );
 

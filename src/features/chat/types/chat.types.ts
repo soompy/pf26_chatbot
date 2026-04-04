@@ -1,6 +1,6 @@
 export type Role = "user" | "assistant" | "system";
 
-export type MessageStatus = "sending" | "streaming" | "done" | "error";
+export type MessageStatus = "streaming" | "done" | "error";
 
 export interface Attachment {
   id: string;
@@ -33,6 +33,13 @@ export interface Thread {
 
 export type ModelId = "gpt-4o" | "gpt-4o-mini" | "claude-opus-4-6" | "claude-sonnet-4-6";
 
+export const MODEL_MAX_TOKENS: Record<ModelId, number> = {
+  "gpt-4o": 128000,
+  "gpt-4o-mini": 128000,
+  "claude-opus-4-6": 200000,
+  "claude-sonnet-4-6": 200000,
+};
+
 export interface ModelOption {
   id: ModelId;
   name: string;
@@ -47,6 +54,7 @@ export interface ChatRequest {
   model: ModelId;
   stream: true;
   systemPrompt?: string;
+  attachments?: Attachment[];
 }
 
 // 스트리밍 상태 머신

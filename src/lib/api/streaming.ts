@@ -12,7 +12,7 @@ import { ModelError } from "@/lib/api/errors";
 export async function* streamChatCompletion(
   body: ChatRequest,
   signal?: AbortSignal,
-  onUsage?: (completionTokens: number) => void
+  onUsage?: (usage: { completionTokens?: number; inputTokens?: number }) => void
 ): AsyncGenerator<string> {
   const response = await fetch("/api/chat", {
     method: "POST",
@@ -51,12 +51,15 @@ export async function* streamChatCompletion(
         try {
           const parsed = JSON.parse(data);
 
-          // usage 청크: choices가 비어있고 usage.completion_tokens가 있는 경우
-          if (
-            parsed.usage?.completion_tokens != null &&
-            (!parsed.choices || parsed.choices.length === 0)
-          ) {
-            onUsage?.(parsed.usage.completion_tokens);
+          // usage 청크: choices가 비어있고 usage 정보가 있는 경우
+          if (!parsed.choices?.length && parsed.usage) {
+            const { completion_tokens, prompt_tokens } = parsed.usage;
+            if (completion_tokens != null || prompt_tokens != null) {
+              onUsage?.({
+                completionTokens: completion_tokens ?? undefined,
+                inputTokens: prompt_tokens ?? undefined,
+              });
+            }
             continue;
           }
 
