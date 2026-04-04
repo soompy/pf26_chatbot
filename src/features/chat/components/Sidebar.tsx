@@ -2,15 +2,31 @@
 
 import { useChatStore } from "../stores/chatStore";
 import { Button } from "@/design-system";
-import { MessageSquarePlus, Trash2 } from "lucide-react";
+import { MessageSquarePlus, Trash2, X } from "lucide-react";
 import { clsx } from "clsx";
 
-export function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const { threads, activeThreadId, createThread, selectThread, deleteThread } =
     useChatStore();
 
   return (
-    <aside className="w-64 shrink-0 flex flex-col bg-surface-raised border-r border-[var(--color-border)] h-full">
+    <aside
+      className={clsx(
+        // 기본 스타일
+        "w-64 shrink-0 flex flex-col bg-surface-raised border-r border-[var(--color-border)] h-full",
+        // 모바일: fixed 드로어 (z-40, 좌측 슬라이드)
+        "fixed inset-y-0 left-0 z-40 transition-transform duration-300 ease-out",
+        // 데스크톱: 상대 위치로 복귀, 항상 표시
+        "lg:relative lg:translate-x-0 lg:z-auto",
+        // 모바일 열림/닫힘 상태
+        isOpen ? "translate-x-0" : "-translate-x-full",
+      )}
+    >
       {/* 헤더 */}
       <div className="p-4 border-b border-[var(--color-border)]">
         <div className="flex items-center justify-between mb-3">
@@ -28,13 +44,26 @@ export function Sidebar() {
             </div>
             <span className="font-semibold text-sm text-text-primary">AI Chat</span>
           </div>
+
+          {/* 닫기 버튼 — 모바일 전용 */}
+          <button
+            className="lg:hidden p-1 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-overlay transition-colors"
+            onClick={onClose}
+            aria-label="사이드바 닫기"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
+
         <Button
           variant="secondary"
           size="sm"
           className="w-full"
           leftIcon={<MessageSquarePlus className="w-4 h-4" />}
-          onClick={createThread}
+          onClick={() => {
+            createThread();
+            onClose?.();
+          }}
         >
           새 대화
         </Button>
@@ -56,7 +85,10 @@ export function Sidebar() {
                   ? "bg-accent/10 text-text-primary"
                   : "text-text-secondary hover:bg-surface-overlay hover:text-text-primary"
               )}
-              onClick={() => selectThread(thread.id)}
+              onClick={() => {
+                selectThread(thread.id);
+                onClose?.();
+              }}
             >
               <span className="flex-1 truncate text-xs">{thread.title}</span>
               <button

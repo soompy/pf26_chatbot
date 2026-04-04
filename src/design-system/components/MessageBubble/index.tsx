@@ -205,7 +205,7 @@ export function MessageBubble({
   return (
     <article
       className={cn(
-        "group flex gap-3 px-4 py-3 message-enter",
+        "group flex gap-3 px-3 sm:px-4 py-3 message-enter",
         "hover:bg-surface-raised/40 transition-colors duration-fast",
         isUser   && "flex-row-reverse",
         isSystem && "justify-center",
@@ -226,7 +226,7 @@ export function MessageBubble({
       <div
         className={cn(
           "flex flex-col gap-1",
-          isUser   ? "items-end max-w-[80%]" : "items-start max-w-[80%]",
+          isUser   ? "items-end max-w-[85%] sm:max-w-[80%]" : "items-start max-w-[85%] sm:max-w-[80%]",
           isSystem && "items-center max-w-full",
         )}
       >

@@ -10,8 +10,13 @@ import { ThemeToggle } from "@/design-system";
 import { ContextWindowBar } from "@/design-system/components/ContextWindowBar";
 import { MODEL_MAX_TOKENS } from "../types/chat.types";
 import { useEffect, useState } from "react";
+import { Menu } from "lucide-react";
 
-export function ChatWindow() {
+interface ChatWindowProps {
+  onOpenSidebar?: () => void;
+}
+
+export function ChatWindow({ onOpenSidebar }: ChatWindowProps) {
   const { activeThreadId, createThread, systemPrompt, setSystemPrompt, contextTokens, selectedModel } = useChatStore();
   const chat = useChat();
   const [isSystemPromptOpen, setIsSystemPromptOpen] = useState(false);
@@ -25,11 +30,23 @@ export function ChatWindow() {
     <ChatProvider value={chat}>
     <div className="flex-1 flex flex-col h-full min-w-0">
       {/* 헤더 */}
-      <header className="flex items-center justify-between px-6 py-3 border-b border-[var(--color-border)] glass">
-        <div>
-          <h1 className="text-sm font-semibold text-text-primary">AI Chat</h1>
-          <p className="text-xs text-text-muted">스트리밍 응답 · 멀티모달 입력</p>
+      <header className="flex items-center justify-between px-4 lg:px-6 py-3 border-b border-[var(--color-border)] glass">
+        <div className="flex items-center gap-3">
+          {/* 햄버거 버튼 — 모바일/태블릿 전용 */}
+          <button
+            className="lg:hidden p-1.5 rounded-lg text-text-muted hover:text-text-secondary hover:bg-surface-overlay transition-colors"
+            onClick={onOpenSidebar}
+            aria-label="메뉴 열기"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          <div>
+            <h1 className="text-sm font-semibold text-text-primary">AI Chat</h1>
+            <p className="text-xs text-text-muted hidden sm:block">스트리밍 응답 · 멀티모달 입력</p>
+          </div>
         </div>
+
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsSystemPromptOpen((p) => !p)}

@@ -1,11 +1,5 @@
-import { Sidebar } from "@/features/chat/components/Sidebar";
-import { ChatWindow } from "@/features/chat/components/ChatWindow";
+import { ChatLayout } from "@/features/chat/components/ChatLayout";
 
 export default function Home() {
-  return (
-    <main className="flex h-screen overflow-hidden bg-bg">
-      <Sidebar />
-      <ChatWindow />
-    </main>
-  );
+  return <ChatLayout />;
 }
