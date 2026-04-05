@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useChatStore } from "../stores/chatStore";
+import { useChatContext } from "../context/ChatContext";
 import { MessageBubble } from "./MessageBubble";
 import { MessageSkeleton } from "@/design-system";
 
@@ -19,6 +20,8 @@ export function MessageList() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [thread?.messages.length]);
+
+  const { sendMessage } = useChatContext();
 
   if (!thread || thread.messages.length === 0) {
     return (
@@ -45,7 +48,7 @@ export function MessageList() {
         </div>
         <div className="grid grid-cols-2 gap-2 mt-2 w-full max-w-md">
           {SUGGESTIONS.map((s) => (
-            <SuggestionCard key={s} text={s} />
+            <SuggestionCard key={s} text={s} onSelect={sendMessage} />
           ))}
         </div>
       </div>
@@ -80,9 +83,12 @@ const SUGGESTIONS = [
   "TypeScript 유틸리티 타입 정리",
 ];
 
-function SuggestionCard({ text }: { text: string }) {
+function SuggestionCard({ text, onSelect }: { text: string; onSelect: (text: string) => void }) {
   return (
-    <button className="text-left p-3 rounded-xl bg-surface-raised border border-[var(--color-border)] text-xs text-text-secondary hover:text-text-primary hover:border-accent/40 hover:bg-surface-overlay transition-all">
+    <button
+      className="text-left p-3 rounded-xl bg-surface-raised border border-[var(--color-border)] text-xs text-text-secondary hover:text-text-primary hover:border-accent/40 hover:bg-surface-overlay transition-all"
+      onClick={() => onSelect(text)}
+    >
       {text}
     </button>
   );

@@ -45,7 +45,7 @@ export const useChatStore = create<ChatStore>()(
     (set, get) => ({
       activeThreadId: null,
       threads: [],
-      selectedModel: "gpt-4o",
+      selectedModel: "claude-sonnet-4-6",
       streamingMessageId: null,
       systemPrompt: "",
       contextTokens: 0,

@@ -9,22 +9,6 @@ import { createPortal } from "react-dom";
 
 const MODEL_OPTIONS: ModelOption[] = [
   {
-    id: "gpt-4o",
-    name: "GPT-4o",
-    provider: "openai",
-    description: "가장 강력한 OpenAI 모델",
-    maxTokens: 128000,
-    supportsVision: true,
-  },
-  {
-    id: "gpt-4o-mini",
-    name: "GPT-4o mini",
-    provider: "openai",
-    description: "빠르고 효율적인 모델",
-    maxTokens: 128000,
-    supportsVision: true,
-  },
-  {
     id: "claude-opus-4-6",
     name: "Claude Opus 4.6",
     provider: "anthropic",
