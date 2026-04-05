@@ -2,8 +2,9 @@
 
 import { useChatStore } from "../stores/chatStore";
 import { Button } from "@/design-system";
-import { MessageSquarePlus, Trash2, X } from "lucide-react";
+import { MessageSquarePlus, Trash2, X, Search } from "lucide-react";
 import { clsx } from "clsx";
+import { useState } from "react";
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -13,6 +14,13 @@ interface SidebarProps {
 export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const { threads, activeThreadId, createThread, selectThread, deleteThread } =
     useChatStore();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredThreads = searchQuery.trim()
+    ? threads.filter((t) =>
+        t.title.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : threads;
 
   return (
     <aside
@@ -69,14 +77,44 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         </Button>
       </div>
 
+      {/* 검색 입력 */}
+      {threads.length > 0 && (
+        <div className="px-3 py-2 border-b border-[var(--color-border)]">
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-surface-overlay border border-[var(--color-border)] focus-within:border-accent/50 transition-colors">
+            <Search className="w-3.5 h-3.5 text-text-muted shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="대화 검색..."
+              className="flex-1 bg-transparent text-xs text-text-primary placeholder:text-text-muted focus:outline-none"
+              aria-label="대화 검색"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="text-text-muted hover:text-text-secondary transition-colors"
+                aria-label="검색 초기화"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 대화 목록 */}
       <nav className="flex-1 overflow-y-auto p-2 space-y-0.5">
         {threads.length === 0 ? (
           <p className="text-xs text-text-muted px-3 py-4 text-center">
             대화를 시작해 보세요
           </p>
+        ) : filteredThreads.length === 0 ? (
+          <p className="text-xs text-text-muted px-3 py-4 text-center">
+            검색 결과가 없습니다
+          </p>
         ) : (
-          threads.map((thread) => (
+          filteredThreads.map((thread) => (
             <div
               key={thread.id}
               className={clsx(

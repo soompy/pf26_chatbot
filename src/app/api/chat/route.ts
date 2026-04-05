@@ -3,7 +3,20 @@ import type { Attachment } from "@/features/chat/types/chat.types";
 
 export const runtime = "edge";
 
-/** 마지막 user 메시지에 이미지 첨부가 있을 때 OpenAI vision 포맷으로 변환 */
+/**
+ * 텍스트 파일 첨부를 user 메시지 본문에 코드 블록으로 삽입
+ * (OpenAI / Anthropic 공통)
+ */
+function appendTextFiles(baseContent: string, attachments: Attachment[]): string {
+  const textFiles = attachments.filter((a) => a.textContent != null);
+  if (!textFiles.length) return baseContent;
+  const blocks = textFiles.map(
+    (a) => `\n\n[첨부 파일: ${a.name}]\n\`\`\`\n${a.textContent}\n\`\`\``
+  );
+  return baseContent + blocks.join("");
+}
+
+/** 마지막 user 메시지에 이미지·텍스트 첨부가 있을 때 OpenAI vision 포맷으로 변환 */
 function buildOpenAIMessages(
   messages: { role: string; content: string }[],
   attachments?: Attachment[]
@@ -11,7 +24,11 @@ function buildOpenAIMessages(
   if (!attachments?.length) return messages;
   const history = messages.slice(0, -1);
   const last = messages[messages.length - 1];
-  const contentParts: unknown[] = [{ type: "text", text: last.content }];
+
+  // 텍스트 파일 내용을 본문에 합산
+  const textContent = appendTextFiles(last.content, attachments);
+  const contentParts: unknown[] = [{ type: "text", text: textContent }];
+
   for (const att of attachments) {
     if (att.type === "image") {
       contentParts.push({ type: "image_url", image_url: { url: att.url, detail: "auto" } });
@@ -20,7 +37,7 @@ function buildOpenAIMessages(
   return [...history, { role: "user", content: contentParts }];
 }
 
-/** 마지막 user 메시지에 이미지 첨부가 있을 때 Anthropic vision 포맷으로 변환 */
+/** 마지막 user 메시지에 이미지·PDF·텍스트 첨부가 있을 때 Anthropic 포맷으로 변환 */
 function buildAnthropicMessages(
   messages: { role: string; content: string }[],
   attachments?: Attachment[]
@@ -29,16 +46,28 @@ function buildAnthropicMessages(
   const history = messages.slice(0, -1);
   const last = messages[messages.length - 1];
   const contentParts: unknown[] = [];
+
   for (const att of attachments) {
-    if (att.type === "image") {
+    if (att.type === "image" && att.url) {
       const data = att.url.split(",")[1]; // data:image/jpeg;base64,<DATA>
       contentParts.push({
         type: "image",
         source: { type: "base64", media_type: att.mimeType, data },
       });
+    } else if (att.mimeType === "application/pdf" && att.url) {
+      // Claude는 PDF를 document 타입으로 직접 수신 가능
+      const data = att.url.split(",")[1];
+      contentParts.push({
+        type: "document",
+        source: { type: "base64", media_type: "application/pdf", data },
+      });
     }
   }
-  contentParts.push({ type: "text", text: last.content });
+
+  // 텍스트 파일 내용을 본문에 합산
+  const textContent = appendTextFiles(last.content, attachments);
+  contentParts.push({ type: "text", text: textContent });
+
   return [...history, { role: "user", content: contentParts }];
 }
 

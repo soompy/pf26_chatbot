@@ -58,6 +58,7 @@ export function useChat(): UseChatReturn {
     addMessage,
     updateMessage,
     removeMessage,
+    renameThread,
     setStreamingMessageId,
     setContextTokens,
     getActiveThread,
@@ -77,12 +78,107 @@ export function useChat(): UseChatReturn {
 
   const clearError = useCallback(() => setError(null), []);
 
+  /* ── 공통 스트리밍 핵심 로직 ──────────────────────────── */
+
+  /**
+   * 주어진 메시지 배열로 스트리밍 API를 호출하고 결과를 assistantMsgId 메시지에 반영.
+   * AbortController / 타임아웃 / 에러 분류 / cleanup 포함.
+   * @returns "done" | "aborted" | "error"
+   */
+  const _streamToMessage = useCallback(
+    async ({
+      threadId,
+      assistantMsgId,
+      apiMessages,
+      attachments,
+    }: {
+      threadId: string;
+      assistantMsgId: string;
+      apiMessages: { role: import("../types/chat.types").Role; content: string }[];
+      attachments?: Attachment[];
+    }): Promise<"done" | "aborted" | "error"> => {
+      abortControllerRef.current = new AbortController();
+      const { signal } = abortControllerRef.current;
+      isTimeoutRef.current = false;
+
+      timeoutIdRef.current = setTimeout(() => {
+        isTimeoutRef.current = true;
+        abortControllerRef.current?.abort();
+      }, TIMEOUT_MS);
+
+      try {
+        let accumulated = "";
+        // 스트리밍 중 store 업데이트를 ~60fps로 제한
+        // 매 청크(10~30/s)마다 업데이트하면 MessageList 전체가 청크 수만큼 리렌더링됨
+        let lastFlush = 0;
+        const FLUSH_INTERVAL = 16; // ms (≈ 60fps)
+
+        const stream = streamChatCompletion(
+          {
+            messages: apiMessages,
+            model: selectedModel,
+            stream: true,
+            systemPrompt: systemPrompt || undefined,
+            attachments,
+          },
+          signal,
+          ({ completionTokens, inputTokens }) => {
+            if (completionTokens != null)
+              updateMessage(threadId, assistantMsgId, { tokenCount: completionTokens });
+            if (inputTokens != null)
+              setContextTokens(inputTokens);
+          }
+        );
+
+        for await (const chunk of stream) {
+          accumulated += chunk;
+          const now = Date.now();
+          if (now - lastFlush >= FLUSH_INTERVAL) {
+            updateMessage(threadId, assistantMsgId, {
+              content: accumulated,
+              status: "streaming",
+            });
+            lastFlush = now;
+          }
+        }
+
+        // 마지막 청크는 반드시 반영
+        updateMessage(threadId, assistantMsgId, {
+          content: accumulated,
+          status: "done",
+        });
+        return "done";
+      } catch (err) {
+        const chatErr = isTimeoutRef.current
+          ? new TimeoutError(TIMEOUT_MS)
+          : toChatError(err);
+
+        if (chatErr instanceof AbortError) {
+          // 사용자가 직접 취소 → 현재까지 받은 텍스트 유지
+          updateMessage(threadId, assistantMsgId, { status: "done" });
+          return "aborted";
+        } else {
+          updateMessage(threadId, assistantMsgId, { content: "", status: "error" });
+          setError(chatErr);
+          return "error";
+        }
+      } finally {
+        if (timeoutIdRef.current) {
+          clearTimeout(timeoutIdRef.current);
+          timeoutIdRef.current = null;
+        }
+        setStreamingMessageId(null);
+        abortControllerRef.current = null;
+      }
+    },
+    [selectedModel, systemPrompt, updateMessage, setContextTokens, setStreamingMessageId]
+  );
+
   /* ── 핵심 전송 로직 ──────────────────────────────────── */
 
   const _execute = useCallback(
     async (content: string, attachments?: Attachment[]) => {
       setError(null);
-      isTimeoutRef.current = false;
 
       // 스레드가 없으면 새로 생성
       const threadId = activeThreadId ?? createThread();
@@ -111,94 +207,41 @@ export function useChat(): UseChatReturn {
       });
       setStreamingMessageId(assistantMsgId);
 
-      // ── AbortController + 타임아웃 설정 ──
-      abortControllerRef.current = new AbortController();
-      const { signal } = abortControllerRef.current;
+      // 히스토리: 완료된 메시지만 포함 (스트리밍 중인 플레이스홀더 제외)
+      const thread = getActiveThread();
+      const history =
+        thread?.messages
+          .filter((m) => m.status === "done")
+          .map((m) => ({ role: m.role, content: m.content })) ?? [];
 
-      timeoutIdRef.current = setTimeout(() => {
-        isTimeoutRef.current = true;
-        abortControllerRef.current?.abort();
-      }, TIMEOUT_MS);
+      const result = await _streamToMessage({
+        threadId,
+        assistantMsgId,
+        apiMessages: [...history, { role: "user", content: content.trim() }],
+        attachments,
+      });
 
-      try {
-        // 히스토리: 완료된 메시지만 포함 (스트리밍 중인 플레이스홀더 제외)
-        const thread = getActiveThread();
-        const history =
-          thread?.messages
-            .filter((m) => m.status === "done")
-            .map((m) => ({ role: m.role, content: m.content })) ?? [];
-
-        let accumulated = "";
-
-        // ── SSE 스트림 소비 ──
-        const stream = streamChatCompletion(
-          {
-            messages: [...history, { role: "user", content: content.trim() }],
-            model: selectedModel,
-            stream: true,
-            systemPrompt: systemPrompt || undefined,
-            attachments,
-          },
-          signal,
-          ({ completionTokens, inputTokens }) => {
-            if (completionTokens != null) {
-              updateMessage(threadId, assistantMsgId, { tokenCount: completionTokens });
-            }
-            if (inputTokens != null) {
-              setContextTokens(inputTokens);
-            }
-          }
-        );
-
-        for await (const chunk of stream) {
-          accumulated += chunk;
-          updateMessage(threadId, assistantMsgId, {
-            content: accumulated,
-            status: "streaming",
-          });
-        }
-
-        // 스트림 정상 완료
-        updateMessage(threadId, assistantMsgId, {
-          content: accumulated,
-          status: "done",
-        });
-      } catch (err) {
-        // ── 에러 분류 ──
-        const chatErr = isTimeoutRef.current
-          ? new TimeoutError(TIMEOUT_MS)   // 타임아웃 우선
-          : toChatError(err);              // 나머지: network / model / abort / unknown
-
-        if (chatErr instanceof AbortError) {
-          // 사용자가 직접 취소 → 현재까지 받은 텍스트 유지, 에러 노출 안 함
-          updateMessage(threadId, assistantMsgId, { status: "done" });
-        } else {
-          // 그 외 에러 → 플레이스홀더 제거 + 에러 배너 표시
-          updateMessage(threadId, assistantMsgId, {
-            content: "",
-            status: "error",
-          });
-          setError(chatErr);
-        }
-      } finally {
-        if (timeoutIdRef.current) {
-          clearTimeout(timeoutIdRef.current);
-          timeoutIdRef.current = null;
-        }
-        setStreamingMessageId(null);
-        abortControllerRef.current = null;
+      // 첫 번째 교환 완료 시 AI로 대화 제목 생성 (비동기, 비중요)
+      if (result === "done" && history.length === 1) {
+        fetch("/api/title", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ firstUserMessage: content.trim(), model: selectedModel }),
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => { if (data?.title) renameThread(threadId, data.title); })
+          .catch(() => {}); // 제목 생성 실패는 무시
       }
     },
     [
       activeThreadId,
       selectedModel,
-      systemPrompt,
       createThread,
       addMessage,
-      updateMessage,
+      renameThread,
       setStreamingMessageId,
-      setContextTokens,
       getActiveThread,
+      _streamToMessage,
     ]
   );
 
@@ -230,8 +273,7 @@ export function useChat(): UseChatReturn {
       if (!thread) return;
       const threadId = thread.id;
 
-      // removeMessage 이전의 스냅샷으로 히스토리 구성
-      // (제거 대상 assistant 메시지를 제외한 done 메시지만)
+      // 제거 대상 assistant 메시지를 제외한 done 메시지로 히스토리 구성
       const historyMessages = thread.messages
         .filter((m) => m.id !== assistantMessageId && m.status === "done")
         .map((m) => ({ role: m.role, content: m.content }));
@@ -241,9 +283,7 @@ export function useChat(): UseChatReturn {
 
       // 기존 assistant 메시지 제거
       removeMessage(threadId, assistantMessageId);
-
       setError(null);
-      isTimeoutRef.current = false;
 
       // 새 assistant 플레이스홀더
       const newAssistantMsgId = generateId();
@@ -257,69 +297,20 @@ export function useChat(): UseChatReturn {
       });
       setStreamingMessageId(newAssistantMsgId);
 
-      abortControllerRef.current = new AbortController();
-      const { signal } = abortControllerRef.current;
-
-      timeoutIdRef.current = setTimeout(() => {
-        isTimeoutRef.current = true;
-        abortControllerRef.current?.abort();
-      }, TIMEOUT_MS);
-
-      try {
-        let accumulated = "";
-        const stream = streamChatCompletion(
-          { messages: historyMessages, model: selectedModel, stream: true, systemPrompt: systemPrompt || undefined },
-          signal,
-          ({ completionTokens, inputTokens }) => {
-            if (completionTokens != null) {
-              updateMessage(threadId, newAssistantMsgId, { tokenCount: completionTokens });
-            }
-            if (inputTokens != null) {
-              setContextTokens(inputTokens);
-            }
-          }
-        );
-        for await (const chunk of stream) {
-          accumulated += chunk;
-          updateMessage(threadId, newAssistantMsgId, {
-            content: accumulated,
-            status: "streaming",
-          });
-        }
-        updateMessage(threadId, newAssistantMsgId, {
-          content: accumulated,
-          status: "done",
-        });
-      } catch (err) {
-        const chatErr = isTimeoutRef.current
-          ? new TimeoutError(TIMEOUT_MS)
-          : toChatError(err);
-
-        if (chatErr instanceof AbortError) {
-          updateMessage(threadId, newAssistantMsgId, { status: "done" });
-        } else {
-          updateMessage(threadId, newAssistantMsgId, { content: "", status: "error" });
-          setError(chatErr);
-        }
-      } finally {
-        if (timeoutIdRef.current) {
-          clearTimeout(timeoutIdRef.current);
-          timeoutIdRef.current = null;
-        }
-        setStreamingMessageId(null);
-        abortControllerRef.current = null;
-      }
+      await _streamToMessage({
+        threadId,
+        assistantMsgId: newAssistantMsgId,
+        apiMessages: historyMessages,
+      });
     },
     [
       isStreaming,
       selectedModel,
-      systemPrompt,
       getActiveThread,
       removeMessage,
       addMessage,
-      updateMessage,
       setStreamingMessageId,
-      setContextTokens,
+      _streamToMessage,
     ]
   );
 

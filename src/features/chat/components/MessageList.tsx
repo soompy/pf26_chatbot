@@ -1,26 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { useChatStore } from "../stores/chatStore";
-import { useChatContext } from "../context/ChatContext";
 import { MessageBubble } from "./MessageBubble";
 import { MessageSkeleton } from "@/design-system";
 
 export function MessageList() {
   const bottomRef = useRef<HTMLDivElement>(null);
-  const thread = useChatStore((s) => s.getActiveThread());
-  const streamingMessageId = useChatStore((s) => s.streamingMessageId);
-  const { regenerate, isStreaming } = useChatContext();
 
-  const handleRegenerate = useCallback(
-    (messageId: string) => () => regenerate(messageId),
-    [regenerate]
+  // getActiveThread() 대신 순수 셀렉터 사용:
+  // getActiveThread()는 내부에서 get()을 다시 호출해 Zustand 최적화가 우회됨
+  const thread = useChatStore(
+    (s) => s.threads.find((t) => t.id === s.activeThreadId)
   );
+  const streamingMessageId = useChatStore((s) => s.streamingMessageId);
 
-  // 새 메시지마다 스크롤 하단으로
+  // 새 메시지가 추가될 때만 스크롤 (스트리밍 시작/종료 제외)
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [thread?.messages.length, streamingMessageId]);
+  }, [thread?.messages.length]);
 
   if (!thread || thread.messages.length === 0) {
     return (
@@ -61,11 +59,6 @@ export function MessageList() {
           key={message.id}
           message={message}
           isStreaming={message.id === streamingMessageId}
-          onRegenerate={
-            message.role === "assistant" && message.status === "done" && !isStreaming
-              ? handleRegenerate(message.id)
-              : undefined
-          }
         />
       ))}
 

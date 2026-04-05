@@ -23,6 +23,7 @@ interface ChatStore {
   createThread: () => string;
   selectThread: (id: string) => void;
   deleteThread: (id: string) => void;
+  renameThread: (id: string, title: string) => void;
   addMessage: (threadId: string, message: Message) => void;
   updateMessage: (threadId: string, messageId: string, patch: Partial<Message>) => void;
   removeMessage: (threadId: string, messageId: string) => void;
@@ -70,6 +71,13 @@ export const useChatStore = create<ChatStore>()(
       },
 
       selectThread: (id) => set({ activeThreadId: id }),
+
+      renameThread: (id, title) =>
+        set((state) => ({
+          threads: state.threads.map((t) =>
+            t.id === id ? { ...t, title } : t
+          ),
+        })),
 
       deleteThread: (id) =>
         set((state) => {

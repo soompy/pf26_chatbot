@@ -6,9 +6,12 @@ export interface Attachment {
   id: string;
   type: "image" | "file";
   name: string;
+  /** base64 data URL (이미지·PDF). 텍스트 파일은 빈 문자열 */
   url: string;
   mimeType: string;
   size: number;
+  /** txt/md/json/csv 파일의 디코딩된 텍스트 원문 */
+  textContent?: string;
 }
 
 export interface Message {

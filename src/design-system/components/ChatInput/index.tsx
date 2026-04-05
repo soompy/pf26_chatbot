@@ -26,6 +26,7 @@ import {
   useState,
   useRef,
   useCallback,
+  useEffect,
   useId,
   type KeyboardEvent,
   type ChangeEvent,
@@ -125,17 +126,35 @@ export function ChatInput({
   showVoiceInput = true,
   className,
 }: ChatInputProps) {
-  const [value, setValue]           = useState("");
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [isDragging, setIsDragging]  = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
+  const [value, setValue]              = useState("");
+  const [attachments, setAttachments]  = useState<Attachment[]>([]);
+  const [isDragging, setIsDragging]    = useState(false);
+  const [isRecording, setIsRecording]  = useState(false);
+  const [speechError, setSpeechError]  = useState<string | null>(null);
+  const [speechSupported, setSpeechSupported] = useState(true);
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef     = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef    = useRef<HTMLInputElement>(null);
+  const recognitionRef  = useRef<{ stop: () => void } | null>(null);
+  const speechErrTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ARIA 연결용 ID
   const hintId   = useId();
   const formId   = useId();
+
+  // 브라우저 지원 여부 마운트 시 확인
+  useEffect(() => {
+    setSpeechSupported(
+      typeof window !== "undefined" &&
+        ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
+    );
+  }, []);
+
+  const showSpeechError = useCallback((msg: string) => {
+    setSpeechError(msg);
+    if (speechErrTimer.current) clearTimeout(speechErrTimer.current);
+    speechErrTimer.current = setTimeout(() => setSpeechError(null), 3500);
+  }, []);
 
   /* ── 전송 ── */
   const handleSubmit = useCallback(() => {
@@ -171,27 +190,51 @@ export function ChatInput({
   }, [maxLength]);
 
   /* ── 파일 처리 ── */
+
+  /** txt / md / json / csv 파일은 텍스트로 디코딩 */
+  function isTextBased(mimeType: string, name: string): boolean {
+    if (mimeType.startsWith("text/")) return true;
+    if (mimeType === "application/json") return true;
+    const ext = name.split(".").pop()?.toLowerCase() ?? "";
+    return ["md", "json", "csv", "txt"].includes(ext);
+  }
+
   const processFiles = useCallback(
     (files: File[]) => {
       const remaining = maxAttachments - attachments.length;
       const toAdd = files.slice(0, remaining);
+
       toAdd.forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const url = e.target?.result as string; // base64 data URL
-          setAttachments((prev) => [
-            ...prev,
-            {
-              id:       `${Date.now()}-${file.name}`,
-              type:     file.type.startsWith("image/") ? "image" : "file",
-              name:     file.name,
-              url,
-              mimeType: file.type,
-              size:     file.size,
-            },
-          ]);
+        const id = `${Date.now()}-${file.name}`;
+        const base: Omit<Attachment, "url" | "textContent"> = {
+          id,
+          type:     file.type.startsWith("image/") ? "image" : "file",
+          name:     file.name,
+          mimeType: file.type || "application/octet-stream",
+          size:     file.size,
         };
-        reader.readAsDataURL(file);
+
+        if (isTextBased(file.type, file.name)) {
+          // 텍스트 파일 → readAsText (API에서 내용 전달)
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setAttachments((prev) => [
+              ...prev,
+              { ...base, url: "", textContent: e.target?.result as string },
+            ]);
+          };
+          reader.readAsText(file, "utf-8");
+        } else {
+          // 이미지 / PDF → base64 data URL
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setAttachments((prev) => [
+              ...prev,
+              { ...base, url: e.target?.result as string },
+            ]);
+          };
+          reader.readAsDataURL(file);
+        }
       });
     },
     [attachments.length, maxAttachments],
@@ -234,10 +277,14 @@ export function ChatInput({
 
   /* ── 음성 입력 ── */
   const toggleRecording = useCallback(() => {
-    if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
+    if (!speechSupported) {
+      showSpeechError("이 브라우저는 음성 입력을 지원하지 않습니다. Chrome을 사용해 주세요.");
       return;
     }
+
+    // 녹음 중이면 중단
     if (isRecording) {
+      recognitionRef.current?.stop();
       setIsRecording(false);
       return;
     }
@@ -247,9 +294,10 @@ export function ChatInput({
       continuous: boolean;
       interimResults: boolean;
       onresult: ((e: { results: { [i: number]: { [j: number]: { transcript: string } } } }) => void) | null;
-      onerror: (() => void) | null;
+      onerror: ((e: { error: string }) => void) | null;
       onend: (() => void) | null;
       start: () => void;
+      stop: () => void;
     };
 
     const Ctor =
@@ -258,20 +306,40 @@ export function ChatInput({
     if (!Ctor) return;
 
     const recognition = new Ctor();
+    recognitionRef.current = recognition;
     recognition.lang = "ko-KR";
     recognition.continuous = false;
     recognition.interimResults = false;
+
     recognition.onresult = (e) => {
       const transcript = e.results[0][0].transcript;
       setValue((prev) => prev + transcript);
       setIsRecording(false);
     };
-    recognition.onerror = () => setIsRecording(false);
-    recognition.onend   = () => setIsRecording(false);
+
+    recognition.onerror = (e) => {
+      setIsRecording(false);
+      recognitionRef.current = null;
+      const errorMessages: Record<string, string> = {
+        "not-allowed":          "마이크 권한이 거부되었습니다. 브라우저 설정에서 허용해 주세요.",
+        "no-speech":            "음성이 감지되지 않았습니다. 다시 시도해 주세요.",
+        "network":              "네트워크 오류로 음성 인식에 실패했습니다.",
+        "audio-capture":        "마이크를 찾을 수 없습니다. 마이크 연결을 확인해 주세요.",
+        "service-not-allowed":  "음성 인식 서비스를 사용할 수 없습니다.",
+        "aborted":              "",  // 사용자가 직접 중단, 에러 불필요
+      };
+      const msg = errorMessages[e.error] ?? "음성 인식 중 오류가 발생했습니다.";
+      if (msg) showSpeechError(msg);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+      recognitionRef.current = null;
+    };
 
     setIsRecording(true);
     recognition.start();
-  }, [isRecording]);
+  }, [isRecording, speechSupported, showSpeechError]);
 
   /* ── 파생 상태 ── */
   const isOverLimit = maxLength > 0 && value.length > maxLength * 0.9;
@@ -424,15 +492,25 @@ export function ChatInput({
         )}
       </form>
 
-      {/* 힌트 / 글자 수 */}
+      {/* 힌트 / 글자 수 / STT 에러 */}
       <div
         id={hintId}
         className="flex items-center justify-between mt-2 px-1"
       >
-        <p className="text-token-xs text-text-muted">
-          Enter 전송 · Shift+Enter 줄바꿈
-          {!atMaxFiles && " · 파일 드래그 가능"}
-        </p>
+        {speechError ? (
+          <p
+            className="text-token-xs text-error animate-[fade-in_0.15s_ease-out]"
+            aria-live="assertive"
+            role="alert"
+          >
+            {speechError}
+          </p>
+        ) : (
+          <p className="text-token-xs text-text-muted">
+            Enter 전송 · Shift+Enter 줄바꿈
+            {!atMaxFiles && " · 파일 드래그 가능"}
+          </p>
+        )}
 
         {maxLength > 0 && (
           <span
