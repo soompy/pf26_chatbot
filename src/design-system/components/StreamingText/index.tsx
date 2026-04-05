@@ -18,7 +18,8 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -47,6 +48,59 @@ export interface StreamingTextProps {
   className?: string;
 }
 
+/* ── 코드 블록 복사 버튼 ──────────────────────────────── */
+
+/** React children 트리에서 순수 텍스트를 재귀적으로 추출 */
+function extractText(node: React.ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(extractText).join("");
+  if (React.isValidElement(node)) {
+    return extractText((node.props as { children?: React.ReactNode }).children);
+  }
+  return "";
+}
+
+function CodeBlockWithCopy({
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLPreElement>) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    const text = extractText(children as React.ReactNode);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }, [children]);
+
+  return (
+    <div className="relative group/code my-3">
+      <pre
+        className="overflow-x-auto rounded-token-lg border border-line bg-[#0d1117] p-4 text-xs"
+        {...props}
+      >
+        {children}
+      </pre>
+      <button
+        onClick={handleCopy}
+        aria-label={copied ? "복사 완료" : "코드 복사"}
+        className={cn(
+          "absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-medium border",
+          "transition-all duration-fast",
+          "opacity-0 group-hover/code:opacity-100 focus-visible:opacity-100",
+          copied
+            ? "text-success bg-success/10 border-success/20"
+            : "text-text-muted bg-surface-overlay border-line hover:text-text-primary",
+        )}
+      >
+        {copied ? "✓ 복사됨" : "⎘ 복사"}
+      </button>
+    </div>
+  );
+}
+
 /* ── Markdown 커스텀 렌더러 ───────────────────────────── */
 
 const markdownComponents: Components = {
@@ -69,16 +123,9 @@ const markdownComponents: Components = {
       </code>
     );
   },
-  // 코드 블록 — pre 래퍼
+  // 코드 블록 — 복사 버튼 포함 래퍼
   pre({ children, ...props }) {
-    return (
-      <pre
-        className="my-3 overflow-x-auto rounded-token-lg border border-line bg-[#0d1117] p-4 text-xs"
-        {...props}
-      >
-        {children}
-      </pre>
-    );
+    return <CodeBlockWithCopy {...props}>{children}</CodeBlockWithCopy>;
   },
   // 링크
   a({ href, children, ...props }) {
