@@ -58,6 +58,8 @@ export interface MessageBubbleProps {
   onCopy?: (content: string) => void;
   /** 재생성 요청 (assistant 메시지에서만 표시) */
   onRegenerate?: () => void;
+  /** 편집 요청 (user 메시지에서만 표시) */
+  onEdit?: () => void;
   /** 마크다운 파싱 여부 (기본 true) */
   markdown?: boolean;
   /** 생성 시각 */
@@ -181,6 +183,7 @@ export function MessageBubble({
   attachments,
   onCopy,
   onRegenerate,
+  onEdit,
   markdown = true,
   createdAt,
   className,
@@ -337,6 +340,30 @@ export function MessageBubble({
             </div>
           )}
         </div>
+
+        {/* ── 액션 바 (user 메시지 편집) ── */}
+        {isUser && status === "done" && onEdit && (
+          <div
+            className={cn(
+              "flex items-center gap-2 mt-0.5",
+              "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
+              "transition-opacity duration-fast",
+            )}
+          >
+            <button
+              onClick={onEdit}
+              aria-label="메시지 편집"
+              title="편집"
+              className={cn(
+                "flex items-center gap-1 px-2 py-0.5 rounded-token-sm text-[10px] font-medium",
+                "text-text-muted hover:text-text-primary bg-surface-overlay border border-line",
+                "transition-all duration-fast press",
+              )}
+            >
+              ✎ 편집
+            </button>
+          </div>
+        )}
 
         {/* ── 액션 바 (assistant 메시지만) ── */}
         {isAssistant && status === "done" && content && (

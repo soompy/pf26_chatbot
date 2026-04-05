@@ -42,6 +42,29 @@ function cn(...inputs: Parameters<typeof clsx>) {
   return twMerge(clsx(inputs));
 }
 
+/* ── 파일 크기 제한 ──────────────────────────────────────── */
+const SIZE_LIMITS = {
+  image: 5  * 1024 * 1024,  // 5MB
+  pdf:   10 * 1024 * 1024,  // 10MB
+  text:  1  * 1024 * 1024,  // 1MB
+} as const;
+
+const SIZE_LABELS = { image: "5MB", pdf: "10MB", text: "1MB" } as const;
+
+function getFileCategory(mimeType: string, name: string): keyof typeof SIZE_LIMITS {
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType === "application/pdf") return "pdf";
+  return "text";
+}
+
+/** txt / md / json / csv 파일은 텍스트로 디코딩 */
+function isTextBased(mimeType: string, name: string): boolean {
+  if (mimeType.startsWith("text/")) return true;
+  if (mimeType === "application/json") return true;
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  return ["md", "json", "csv", "txt"].includes(ext);
+}
+
 /* ── Props ─────────────────────────────────────────────── */
 
 export interface ChatInputProps {
@@ -131,12 +154,20 @@ export function ChatInput({
   const [isDragging, setIsDragging]    = useState(false);
   const [isRecording, setIsRecording]  = useState(false);
   const [speechError, setSpeechError]  = useState<string | null>(null);
+  const [fileError, setFileError]      = useState<string | null>(null);
   const [speechSupported, setSpeechSupported] = useState(true);
 
   const textareaRef     = useRef<HTMLTextAreaElement>(null);
   const fileInputRef    = useRef<HTMLInputElement>(null);
   const recognitionRef  = useRef<{ stop: () => void } | null>(null);
   const speechErrTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fileErrTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showFileError = useCallback((msg: string) => {
+    setFileError(msg);
+    if (fileErrTimer.current) clearTimeout(fileErrTimer.current);
+    fileErrTimer.current = setTimeout(() => setFileError(null), 4000);
+  }, []);
 
   // ARIA 연결용 ID
   const hintId   = useId();
@@ -191,20 +222,21 @@ export function ChatInput({
 
   /* ── 파일 처리 ── */
 
-  /** txt / md / json / csv 파일은 텍스트로 디코딩 */
-  function isTextBased(mimeType: string, name: string): boolean {
-    if (mimeType.startsWith("text/")) return true;
-    if (mimeType === "application/json") return true;
-    const ext = name.split(".").pop()?.toLowerCase() ?? "";
-    return ["md", "json", "csv", "txt"].includes(ext);
-  }
-
   const processFiles = useCallback(
     (files: File[]) => {
       const remaining = maxAttachments - attachments.length;
       const toAdd = files.slice(0, remaining);
 
       toAdd.forEach((file) => {
+        // 파일 크기 검증
+        const category = getFileCategory(file.type, file.name);
+        if (file.size > SIZE_LIMITS[category]) {
+          showFileError(
+            `"${file.name}" 크기가 너무 큽니다. (최대 ${SIZE_LABELS[category]})`
+          );
+          return;
+        }
+
         const id = `${Date.now()}-${file.name}`;
         const base: Omit<Attachment, "url" | "textContent"> = {
           id,
@@ -237,7 +269,7 @@ export function ChatInput({
         }
       });
     },
-    [attachments.length, maxAttachments],
+    [attachments.length, maxAttachments, showFileError],
   );
 
   const handleFileChange = useCallback(
@@ -368,6 +400,17 @@ export function ChatInput({
         >
           파일을 여기에 놓으세요
         </div>
+      )}
+
+      {/* 파일 크기 초과 에러 */}
+      {fileError && (
+        <p
+          className="text-token-xs text-error mb-2 animate-[fade-in_0.15s_ease-out]"
+          aria-live="assertive"
+          role="alert"
+        >
+          {fileError}
+        </p>
       )}
 
       {/* 첨부 파일 목록 */}

@@ -41,6 +41,8 @@ export interface UseChatReturn {
   retry: () => void;
   /** assistant 메시지를 삭제하고 동일 컨텍스트로 재생성 */
   regenerate: (assistantMessageId: string) => Promise<void>;
+  /** user 메시지를 수정하고 이후 메시지를 삭제 후 재전송 */
+  editAndResend: (userMessageId: string, newContent: string) => Promise<void>;
   /** 스트리밍 진행 중 여부 */
   isStreaming: boolean;
   /** 분류된 에러. null이면 정상 상태 */
@@ -314,5 +316,65 @@ export function useChat(): UseChatReturn {
     ]
   );
 
-  return { sendMessage, stopStreaming, retry, regenerate, isStreaming, error, clearError };
+  const editAndResend = useCallback(
+    async (userMessageId: string, newContent: string) => {
+      if (isStreaming || !newContent.trim()) return;
+      const thread = getActiveThread();
+      if (!thread) return;
+      const threadId = thread.id;
+
+      const msgIndex = thread.messages.findIndex((m) => m.id === userMessageId);
+      if (msgIndex === -1) return;
+
+      // 편집 이전 완료 메시지로 히스토리 구성 (편집 대상 제외)
+      const historyBefore = thread.messages
+        .slice(0, msgIndex)
+        .filter((m) => m.status === "done")
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      // 편집 대상 이후 메시지 모두 제거
+      const idsToRemove = thread.messages.slice(msgIndex + 1).map((m) => m.id);
+      for (const id of idsToRemove) {
+        removeMessage(threadId, id);
+      }
+
+      // 편집된 내용으로 user 메시지 업데이트
+      updateMessage(threadId, userMessageId, { content: newContent.trim() });
+
+      setError(null);
+
+      // 새 assistant 플레이스홀더
+      const newAssistantMsgId = generateId();
+      addMessage(threadId, {
+        id: newAssistantMsgId,
+        role: "assistant",
+        content: "",
+        status: "streaming",
+        createdAt: new Date(),
+        model: selectedModel,
+      });
+      setStreamingMessageId(newAssistantMsgId);
+
+      await _streamToMessage({
+        threadId,
+        assistantMsgId: newAssistantMsgId,
+        apiMessages: [
+          ...historyBefore,
+          { role: "user" as const, content: newContent.trim() },
+        ],
+      });
+    },
+    [
+      isStreaming,
+      selectedModel,
+      getActiveThread,
+      updateMessage,
+      removeMessage,
+      addMessage,
+      setStreamingMessageId,
+      _streamToMessage,
+    ]
+  );
+
+  return { sendMessage, stopStreaming, retry, regenerate, editAndResend, isStreaming, error, clearError };
 }
