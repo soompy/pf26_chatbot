@@ -62,8 +62,8 @@ export interface MessageBubbleProps {
   onEdit?: () => void;
   /** 마크다운 파싱 여부 (기본 true) */
   markdown?: boolean;
-  /** 생성 시각 */
-  createdAt?: Date;
+  /** 생성 시각 (persist rehydration 후 string일 수 있음) */
+  createdAt?: Date | string;
   className?: string;
 }
 
@@ -73,13 +73,17 @@ export interface MessageBubbleProps {
  * SSR/클라이언트 로케일 불일치를 막기 위해
  * 마운트 후에만 포맷된 시각 문자열을 표시.
  */
-function useFormattedTime(date: Date | undefined) {
+function useFormattedTime(date: Date | string | undefined) {
   const [formatted, setFormatted] = useState<string | null>(null);
 
   useEffect(() => {
     if (!date) return;
+    // Zustand persist는 Date를 JSON 문자열로 직렬화하므로
+    // rehydration 후 string으로 들어올 수 있어 방어적으로 변환
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime())) return;
     setFormatted(
-      date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+      d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
     );
   }, [date]);
 
@@ -249,7 +253,7 @@ export function MessageBubble({
             )}
             {createdAt && timeLabel && (
               <time
-                dateTime={createdAt.toISOString()}
+                dateTime={createdAt instanceof Date ? createdAt.toISOString() : createdAt}
                 className="text-token-xs text-text-muted"
               >
                 {timeLabel}

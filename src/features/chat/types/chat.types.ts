@@ -20,7 +20,8 @@ export interface Message {
   content: string;
   status: MessageStatus;
   attachments?: Attachment[];
-  createdAt: Date;
+  /** persist 후 rehydration 시 string으로 복원될 수 있음 */
+  createdAt: Date | string;
   model?: string;
   tokenCount?: number;
 }
@@ -30,8 +31,9 @@ export interface Thread {
   title: string;
   messages: Message[];
   model: ModelId;
-  createdAt: Date;
-  updatedAt: Date;
+  /** persist 후 rehydration 시 string으로 복원될 수 있음 */
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export type ModelId = "gpt-4o" | "gpt-4o-mini" | "claude-opus-4-6" | "claude-sonnet-4-6";
