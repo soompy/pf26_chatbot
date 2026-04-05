@@ -10,7 +10,7 @@ import { ThemeToggle } from "@/design-system";
 import { ContextWindowBar } from "@/design-system/components/ContextWindowBar";
 import { MODEL_MAX_TOKENS } from "../types/chat.types";
 import type { Thread } from "../types/chat.types";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Menu, Download } from "lucide-react";
 
 interface ChatWindowProps {
@@ -18,15 +18,10 @@ interface ChatWindowProps {
 }
 
 export function ChatWindow({ onOpenSidebar }: ChatWindowProps) {
-  const { activeThreadId, createThread, systemPrompt, setSystemPrompt, contextTokens, selectedModel } = useChatStore();
+  const { activeThreadId, systemPrompt, setSystemPrompt, contextTokens, selectedModel } = useChatStore();
   const activeThread = useChatStore((s) => s.threads.find((t) => t.id === s.activeThreadId));
   const chat = useChat();
   const [isSystemPromptOpen, setIsSystemPromptOpen] = useState(false);
-
-  // 첫 진입 시 스레드 자동 생성
-  useEffect(() => {
-    if (!activeThreadId) createThread();
-  }, [activeThreadId, createThread]);
 
   return (
     <ChatProvider value={chat}>
